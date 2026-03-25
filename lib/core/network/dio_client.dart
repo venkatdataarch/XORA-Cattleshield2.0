@@ -184,7 +184,7 @@ class DioClient {
     } on DioException catch (e) {
       return ApiResult.failure(_mapDioException(e));
     } on SocketException {
-      return const ApiResult.failure(NetworkException());
+      return ApiResult.failure(NetworkException());
     } catch (e) {
       return ApiResult.failure(
         ApiException(message: e.toString()),

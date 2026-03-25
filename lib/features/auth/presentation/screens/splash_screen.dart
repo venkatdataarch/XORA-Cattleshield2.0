@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../core/constants/app_colors.dart';
 import '../../domain/auth_state.dart';
@@ -115,8 +116,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
               // App name
               Text(
                 'XORA',
-                style: TextStyle(
-                  fontFamily: 'Manrope',
+                style: GoogleFonts.manrope(
                   fontSize: 18,
                   fontWeight: FontWeight.w500,
                   letterSpacing: 6,
@@ -126,10 +126,9 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
 
               const SizedBox(height: 4),
 
-              const Text(
+              Text(
                 'CattleShield',
-                style: TextStyle(
-                  fontFamily: 'Manrope',
+                style: GoogleFonts.manrope(
                   fontSize: 36,
                   fontWeight: FontWeight.w800,
                   color: Colors.white,
@@ -141,8 +140,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
 
               Text(
                 'Digital Livestock Insurance',
-                style: TextStyle(
-                  fontFamily: 'Manrope',
+                style: GoogleFonts.manrope(
                   fontSize: 16,
                   fontWeight: FontWeight.w400,
                   color: Colors.white.withValues(alpha: 0.75),

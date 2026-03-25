@@ -92,7 +92,7 @@ class AuthRepository {
       await Future<void>.delayed(const Duration(milliseconds: 800));
 
       if (otp.length != 6) {
-        return const ApiResult.failure(
+        return ApiResult.failure(
           ApiException(message: 'Invalid OTP. Please enter 6 digits.'),
         );
       }
@@ -184,7 +184,7 @@ class AuthRepository {
         return ApiResult.success(minimalUser);
       }
 
-      return const ApiResult.failure(
+      return ApiResult.failure(
         ApiException(message: 'Unable to retrieve user profile.'),
       );
     }
