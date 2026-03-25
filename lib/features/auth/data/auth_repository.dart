@@ -56,18 +56,13 @@ class AuthRepository {
 
   /// Initiates OTP-based login for a farmer.
   ///
-  /// Currently mocked: creates a local farmer user and stores it.
+  /// No backend call needed — just stores phone and proceeds to OTP screen.
+  /// The actual authentication happens in verifyOtp().
   Future<ApiResult<AppUser>> loginWithOtp(String phone) async {
     try {
-      // In production this would call an API to send the OTP.
-      // For now we simulate a successful send and create a placeholder user.
-      await Future<void>.delayed(const Duration(milliseconds: 600));
-
-      // Store the phone temporarily so verifyOtp can pick it up.
       await _storage.saveToken('otp_pending_$phone');
       await _storage.saveUserRole(UserRole.farmer.name);
 
-      // Return a temporary user; the real user will be set after OTP verify.
       final tempUser = AppUser(
         id: 'temp_${DateTime.now().millisecondsSinceEpoch}',
         name: '',
@@ -85,30 +80,23 @@ class AuthRepository {
 
   /// Verifies the OTP sent to [phone].
   ///
-  /// Currently mocked: accepts any 6-digit OTP and returns a farmer user.
+  /// Calls the real backend API. Any 6-digit OTP works (mock backend).
   Future<ApiResult<AppUser>> verifyOtp(String phone, String otp) async {
     try {
-      // In production: final data = await _remoteSource.verifyOtp(phone, otp);
-      await Future<void>.delayed(const Duration(milliseconds: 800));
-
       if (otp.length != 6) {
         return ApiResult.failure(
           ApiException(message: 'Invalid OTP. Please enter 6 digits.'),
         );
       }
 
-      final mockUser = AppUser(
-        id: 'farmer_${DateTime.now().millisecondsSinceEpoch}',
-        name: '',
-        phone: phone,
-        role: UserRole.farmer,
-        createdAt: DateTime.now(),
+      final data = await _remoteSource.verifyOtp(phone, otp);
+      final user = AppUser.fromJson(
+        (data['user'] as Map<String, dynamic>?) ?? data,
       );
+      final token = data['token']?.toString() ?? '';
 
-      const mockToken = 'mock_jwt_token_farmer';
-      await _persistAuthData(mockUser, mockToken);
-
-      return ApiResult.success(mockUser);
+      await _persistAuthData(user, token);
+      return ApiResult.success(user);
     } on ApiException catch (e) {
       return ApiResult.failure(e);
     } catch (e) {

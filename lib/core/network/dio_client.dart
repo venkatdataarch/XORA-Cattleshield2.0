@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -29,7 +27,7 @@ class DioClient {
         contentType: Headers.jsonContentType,
         responseType: ResponseType.json,
         headers: {
-          HttpHeaders.acceptHeader: 'application/json',
+          'Accept': 'application/json',
         },
       ),
     );
@@ -183,9 +181,10 @@ class DioClient {
       return ApiResult.success(response);
     } on DioException catch (e) {
       return ApiResult.failure(_mapDioException(e));
-    } on SocketException {
-      return ApiResult.failure(NetworkException());
     } catch (e) {
+      if (e.toString().contains('SocketException')) {
+        return ApiResult.failure(NetworkException());
+      }
       return ApiResult.failure(
         ApiException(message: e.toString()),
       );
@@ -218,7 +217,7 @@ class DioClient {
         );
 
       case DioExceptionType.unknown:
-        if (e.error is SocketException) {
+        if (e.error.toString().contains('SocketException')) {
           return const NetworkException();
         }
         return ApiException(

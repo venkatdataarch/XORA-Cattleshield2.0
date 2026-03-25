@@ -36,6 +36,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
 
+  // Local loading state for farmer OTP
+  bool _isSendingOtp = false;
+
   @override
   void dispose() {
     _phoneController.dispose();
@@ -51,9 +54,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Future<void> _handleFarmerLogin() async {
     if (!_farmerFormKey.currentState!.validate()) return;
 
+    setState(() => _isSendingOtp = true);
+
     final phone = _phoneController.text.trim();
     final success =
         await ref.read(authProvider.notifier).loginWithOtp(phone);
+
+    if (mounted) setState(() => _isSendingOtp = false);
 
     if (success && mounted) {
       context.goNamed(
@@ -273,7 +280,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           SizedBox(
             height: 52,
             child: ElevatedButton(
-              onPressed: authState.isLoading ? null : _handleFarmerLogin,
+              onPressed: _isSendingOtp ? null : _handleFarmerLogin,
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white,
@@ -282,7 +289,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 ),
                 elevation: 0,
               ),
-              child: authState.isLoading
+              child: _isSendingOtp
                   ? const SizedBox(
                       width: 24,
                       height: 24,

@@ -42,18 +42,13 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
   /// Sends an OTP to the farmer's [phone] number.
   ///
-  /// On success, the state remains loading until OTP is verified.
+  /// Does NOT change auth state to avoid triggering router redirects.
+  /// The actual auth state change happens in verifyOtp().
   Future<bool> loginWithOtp(String phone) async {
-    state = const AuthState.loading();
-
     final result = await _repository.loginWithOtp(phone);
 
     return result.when(
-      success: (_) {
-        // Keep loading state -- user still needs to enter OTP.
-        state = const AuthState(status: AuthStatus.loading);
-        return true;
-      },
+      success: (_) => true,
       failure: (error) {
         state = AuthState.error(error.message);
         return false;

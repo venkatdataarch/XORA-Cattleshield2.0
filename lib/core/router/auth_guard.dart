@@ -17,8 +17,9 @@ class AuthGuard {
     final isInitial = authState.status == AuthStatus.initial;
 
     // While auth status is being determined, stay on splash.
+    // But allow auth routes (login, OTP, registration) to proceed.
     if (isInitial || isLoading) {
-      if (location == '/splash') return null;
+      if (location == '/splash' || _isAuthRoute(location)) return null;
       return '/splash';
     }
 

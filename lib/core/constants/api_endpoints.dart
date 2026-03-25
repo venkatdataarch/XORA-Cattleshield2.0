@@ -1,8 +1,10 @@
 class ApiEndpoints {
   ApiEndpoints._();
 
-  static const String baseUrl =
-      'https://cattleshield-api.azurewebsites.net/api';
+  // For Chrome/Web: use localhost
+  // For Android emulator: use 10.0.2.2
+  // For real device: use your PC's local IP (e.g., 192.168.x.x)
+  static const String baseUrl = 'http://localhost:8000/api';
 
   // Auth
   static const String register = '/auth/register';

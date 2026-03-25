@@ -65,7 +65,11 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
         context.go('/login');
       case AuthStatus.initial:
       case AuthStatus.loading:
-        // Auth check hasn't completed yet; wait for provider update.
+        // Auth check hasn't completed yet; fallback to login after 3 more seconds.
+        Future.delayed(const Duration(seconds: 3), () {
+          if (!mounted) return;
+          context.go('/login');
+        });
         break;
     }
   }
@@ -91,79 +95,80 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
       body: FadeTransition(
         opacity: _fadeAnimation,
         child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Spacer(flex: 3),
-
-              // Logo icon
-              Container(
-                width: 100,
-                height: 100,
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(24),
-                ),
-                child: const Icon(
-                  Icons.shield,
-                  size: 56,
-                  color: Colors.white,
-                ),
-              ),
-
-              const SizedBox(height: 24),
-
-              // App name
-              Text(
-                'XORA',
-                style: GoogleFonts.manrope(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w500,
-                  letterSpacing: 6,
-                  color: Colors.white.withValues(alpha: 0.8),
-                ),
-              ),
-
-              const SizedBox(height: 4),
-
-              Text(
-                'CattleShield',
-                style: GoogleFonts.manrope(
-                  fontSize: 36,
-                  fontWeight: FontWeight.w800,
-                  color: Colors.white,
-                  letterSpacing: 1,
-                ),
-              ),
-
-              const SizedBox(height: 12),
-
-              Text(
-                'Digital Livestock Insurance',
-                style: GoogleFonts.manrope(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w400,
-                  color: Colors.white.withValues(alpha: 0.75),
-                  letterSpacing: 0.5,
-                ),
-              ),
-
-              const Spacer(flex: 3),
-
-              // Loading indicator
-              SizedBox(
-                width: 28,
-                height: 28,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2.5,
-                  valueColor: AlwaysStoppedAnimation<Color>(
-                    Colors.white.withValues(alpha: 0.7),
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 48),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // Logo icon
+                  Container(
+                    width: 100,
+                    height: 100,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(24),
+                    ),
+                    child: const Icon(
+                      Icons.shield,
+                      size: 56,
+                      color: Colors.white,
+                    ),
                   ),
-                ),
-              ),
 
-              const SizedBox(height: 48),
-            ],
+                  const SizedBox(height: 24),
+
+                  // App name
+                  Text(
+                    'XORA',
+                    style: GoogleFonts.manrope(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w500,
+                      letterSpacing: 6,
+                      color: Colors.white.withValues(alpha: 0.8),
+                    ),
+                  ),
+
+                  const SizedBox(height: 4),
+
+                  Text(
+                    'CattleShield',
+                    style: GoogleFonts.manrope(
+                      fontSize: 36,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                      letterSpacing: 1,
+                    ),
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  Text(
+                    'Digital Livestock Insurance',
+                    style: GoogleFonts.manrope(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w400,
+                      color: Colors.white.withValues(alpha: 0.75),
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+
+                  const SizedBox(height: 48),
+
+                  // Loading indicator
+                  SizedBox(
+                    width: 28,
+                    height: 28,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.5,
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        Colors.white.withValues(alpha: 0.7),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
         ),
       ),
