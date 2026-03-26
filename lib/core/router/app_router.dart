@@ -28,6 +28,9 @@ import '../../features/admin/presentation/screens/admin_dashboard_screen.dart';
 import '../../features/admin/presentation/screens/audit_log_screen.dart';
 import '../../features/admin/presentation/screens/fraud_alerts_screen.dart';
 
+// Photo capture
+import '../../features/ai/photo_capture/presentation/screens/guided_photo_capture_screen.dart';
+
 // Vet screens
 import '../../features/vet/dashboard/presentation/screens/vet_dashboard_screen.dart';
 import '../../features/vet/review/presentation/screens/vet_proposal_review_screen.dart';
@@ -402,6 +405,15 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         name: RouteNames.healthResult,
         builder: (context, state) =>
             const _Placeholder(title: 'Health Result'),
+      ),
+
+      // 360° guided photo capture route
+      GoRoute(
+        path: '/scan/photos/:animalId',
+        name: 'guided-photo-capture',
+        builder: (context, state) => GuidedPhotoCaptureScreen(
+          animalName: state.uri.queryParameters['name'] ?? 'Animal',
+        ),
       ),
     ],
     errorBuilder: (context, state) => Scaffold(

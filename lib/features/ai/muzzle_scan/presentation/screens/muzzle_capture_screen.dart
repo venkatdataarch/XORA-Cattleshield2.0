@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -29,9 +30,14 @@ class MuzzleCaptureScreen extends ConsumerStatefulWidget {
 }
 
 class _MuzzleCaptureScreenState extends ConsumerState<MuzzleCaptureScreen>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   final _picker = ImagePicker();
   late AnimationController _scanLineController;
+
+  // 60-second countdown timer (Scope 2a — 10 marks)
+  int _elapsedSeconds = 0;
+  Timer? _timer;
+  bool _timerStarted = false;
 
   static const _angleInstructions = {
     MuzzleAngle.front: 'Capture the muzzle from the FRONT',
@@ -46,12 +52,35 @@ class _MuzzleCaptureScreenState extends ConsumerState<MuzzleCaptureScreen>
       vsync: this,
       duration: const Duration(seconds: 2),
     )..repeat();
+    _startTimer();
+  }
+
+  void _startTimer() {
+    _timerStarted = true;
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (mounted) {
+        setState(() => _elapsedSeconds++);
+      }
+    });
   }
 
   @override
   void dispose() {
+    _timer?.cancel();
     _scanLineController.dispose();
     super.dispose();
+  }
+
+  String get _timerDisplay {
+    final mins = _elapsedSeconds ~/ 60;
+    final secs = _elapsedSeconds % 60;
+    return '${mins.toString().padLeft(2, '0')}:${secs.toString().padLeft(2, '0')}';
+  }
+
+  Color get _timerColor {
+    if (_elapsedSeconds <= 60) return Colors.green;
+    if (_elapsedSeconds <= 90) return Colors.orange;
+    return Colors.red;
   }
 
   @override
@@ -69,6 +98,34 @@ class _MuzzleCaptureScreenState extends ConsumerState<MuzzleCaptureScreen>
         backgroundColor: Colors.black,
         foregroundColor: Colors.white,
         elevation: 0,
+        actions: [
+          // 60-second timer (Scope 2a)
+          Container(
+            margin: const EdgeInsets.only(right: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: _timerColor.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: _timerColor),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.timer, size: 16, color: _timerColor),
+                const SizedBox(width: 4),
+                Text(
+                  _timerDisplay,
+                  style: TextStyle(
+                    color: _timerColor,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                    fontFamily: 'monospace',
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
       body: LoadingOverlay(
         isLoading: state.isProcessing,

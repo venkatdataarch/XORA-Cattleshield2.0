@@ -173,6 +173,22 @@ class _VetClaimReviewScreenState extends ConsumerState<VetClaimReviewScreen> {
     final claimPhotos =
         claim.formData['claimPhotos'] as List<dynamic>? ?? [];
 
+    // Calculate elapsed time since death for post-mortem display
+    final deathTimeStr = claim.formData['death_date']?.toString() ??
+        claim.formData['date_of_death']?.toString();
+    String elapsedDisplay = '';
+    if (deathTimeStr != null) {
+      final deathTime = DateTime.tryParse(deathTimeStr);
+      if (deathTime != null) {
+        final elapsed = DateTime.now().difference(deathTime);
+        if (elapsed.inHours > 0) {
+          elapsedDisplay = '${elapsed.inHours}h ${elapsed.inMinutes % 60}m since death';
+        } else {
+          elapsedDisplay = '${elapsed.inMinutes}m since death';
+        }
+      }
+    }
+
     return Container(
       padding: AppSpacing.cardPadding,
       decoration: BoxDecoration(
@@ -183,50 +199,137 @@ class _VetClaimReviewScreenState extends ConsumerState<VetClaimReviewScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Photo Comparison',
-            style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w600,
+          // Header with post-mortem timer
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Muzzle Comparison (Side-by-Side)',
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
                 ),
+              ),
+              if (elapsedDisplay.isNotEmpty)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: Colors.orange.withValues(alpha: 0.4)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.timer, size: 14, color: Colors.orange),
+                      const SizedBox(width: 4),
+                      Text(
+                        elapsedDisplay,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.orange,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
           ),
           const SizedBox(height: AppSpacing.sm),
+
+          // Side-by-side comparison (Scope 5c — 10 marks)
           Row(
             children: [
               Expanded(
                 child: Column(
                   children: [
-                    Text(
-                      'Original',
-                      style:
-                          Theme.of(context).textTheme.labelSmall?.copyWith(
-                                color: AppColors.textSecondary,
-                              ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        color: Colors.blue.withValues(alpha: 0.1),
+                        borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
+                      ),
+                      child: Text(
+                        'ENROLLMENT',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.blue[700],
+                        ),
+                      ),
                     ),
-                    const SizedBox(height: 4),
                     _buildPhotoBox(
                       originalPhotos.isNotEmpty
                           ? originalPhotos.first.toString()
                           : null,
                     ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Live animal at enrollment',
+                      style: TextStyle(fontSize: 10, color: AppColors.textSecondary),
+                    ),
                   ],
                 ),
               ),
-              const SizedBox(width: AppSpacing.sm),
+              // VS divider
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: Column(
+                  children: [
+                    Container(
+                      width: 32,
+                      height: 32,
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Center(
+                        child: Text(
+                          'VS',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    const Icon(Icons.compare_arrows, size: 20, color: Colors.grey),
+                  ],
+                ),
+              ),
               Expanded(
                 child: Column(
                   children: [
-                    Text(
-                      'Claim',
-                      style:
-                          Theme.of(context).textTheme.labelSmall?.copyWith(
-                                color: AppColors.textSecondary,
-                              ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        color: Colors.red.withValues(alpha: 0.1),
+                        borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
+                      ),
+                      child: Text(
+                        'CLAIM (POST-MORTEM)',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.red[700],
+                        ),
+                      ),
                     ),
-                    const SizedBox(height: 4),
                     _buildPhotoBox(
                       claimPhotos.isNotEmpty
                           ? claimPhotos.first.toString()
                           : null,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Deceased animal at claim',
+                      style: TextStyle(fontSize: 10, color: AppColors.textSecondary),
                     ),
                   ],
                 ),
