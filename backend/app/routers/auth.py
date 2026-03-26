@@ -36,31 +36,55 @@ def _user_response(user: User) -> UserResponse:
 
 @router.post("/register", response_model=TokenResponse)
 async def register(req: RegisterRequest, db: AsyncSession = Depends(get_db)):
-    # Check if phone already exists
+    # Check if phone already exists (from OTP flow)
     result = await db.execute(select(User).where(User.phone == req.phone))
-    existing = result.scalar_one_or_none()
-    if existing:
-        raise HTTPException(status_code=400, detail="Phone number already registered")
+    user = result.scalar_one_or_none()
 
-    user = User(
-        name=req.name,
-        phone=req.phone,
-        email=req.email,
-        role=req.role,
-        address=req.address,
-        village=req.village,
-        district=req.district,
-        state=req.state,
-        aadhaar_number=req.aadhaar_number,
-        father_or_husband_name=req.father_or_husband_name,
-        occupation=req.occupation,
-        qualification=req.qualification,
-        reg_number=req.reg_number,
-        password_hash=hash_password(req.password) if req.password else None,
-    )
-    db.add(user)
+    if user:
+        # Update existing user created during OTP verification
+        user.name = req.name
+        if req.email:
+            user.email = req.email
+        if req.address:
+            user.address = req.address
+        if req.village:
+            user.village = req.village
+        if req.district:
+            user.district = req.district
+        if req.state:
+            user.state = req.state
+        if req.aadhaar_number:
+            user.aadhaar_number = req.aadhaar_number
+        if req.father_or_husband_name:
+            user.father_or_husband_name = req.father_or_husband_name
+        if req.occupation:
+            user.occupation = req.occupation
+        if req.qualification:
+            user.qualification = req.qualification
+        if req.reg_number:
+            user.reg_number = req.reg_number
+        if req.password:
+            user.password_hash = hash_password(req.password)
+    else:
+        user = User(
+            name=req.name,
+            phone=req.phone,
+            email=req.email,
+            role=req.role,
+            address=req.address,
+            village=req.village,
+            district=req.district,
+            state=req.state,
+            aadhaar_number=req.aadhaar_number,
+            father_or_husband_name=req.father_or_husband_name,
+            occupation=req.occupation,
+            qualification=req.qualification,
+            reg_number=req.reg_number,
+            password_hash=hash_password(req.password) if req.password else None,
+        )
+        db.add(user)
+
     await db.flush()
-
     token = create_access_token({"sub": str(user.id), "role": user.role})
     return TokenResponse(token=token, user=_user_response(user))
 
