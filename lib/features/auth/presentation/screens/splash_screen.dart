@@ -8,10 +8,6 @@ import '../../domain/auth_state.dart';
 import '../../domain/user_model.dart';
 import '../providers/auth_provider.dart';
 
-/// Branded splash screen shown on app launch.
-///
-/// Checks persistent auth state and redirects to the appropriate
-/// dashboard or the login screen after a brief branded delay.
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
 
@@ -23,14 +19,15 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     with SingleTickerProviderStateMixin {
   late final AnimationController _fadeController;
   late final Animation<double> _fadeAnimation;
+  bool _hasNavigated = false;
 
   @override
   void initState() {
     super.initState();
 
     _fadeController = AnimationController(
-      vsync: this,
       duration: const Duration(milliseconds: 800),
+      vsync: this,
     );
     _fadeAnimation = CurvedAnimation(
       parent: _fadeController,
@@ -38,39 +35,40 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     );
     _fadeController.forward();
 
-    // Kick off auth check.
-    Future.microtask(() {
-      ref.read(authProvider.notifier).checkAuth();
-    });
+    _initAndNavigate();
+  }
 
-    // Navigate after a minimum splash duration of 2 seconds.
-    Future.delayed(const Duration(seconds: 2), _navigate);
+  Future<void> _initAndNavigate() async {
+    // Show splash branding for at least 2 seconds.
+    await Future.delayed(const Duration(seconds: 2));
+    if (!mounted) return;
+
+    // Check auth without triggering router redirects.
+    // checkAuth() sets state to loading then authenticated/unauthenticated,
+    // but the auth guard skips redirects while on /splash.
+    await ref.read(authProvider.notifier).checkAuth();
+    if (!mounted) return;
+
+    _navigate();
   }
 
   void _navigate() {
-    if (!mounted) return;
+    if (_hasNavigated || !mounted) return;
+    _hasNavigated = true;
 
     final state = ref.read(authProvider);
 
-    switch (state.status) {
-      case AuthStatus.authenticated:
-        final role = state.user?.role;
-        if (role == UserRole.vet) {
-          context.go('/vet');
-        } else {
-          context.go('/farmer');
-        }
-      case AuthStatus.unauthenticated:
-      case AuthStatus.error:
-        context.go('/login');
-      case AuthStatus.initial:
-      case AuthStatus.loading:
-        // Auth check hasn't completed yet; fallback to login after 3 more seconds.
-        Future.delayed(const Duration(seconds: 3), () {
-          if (!mounted) return;
-          context.go('/login');
-        });
-        break;
+    if (state.isAuthenticated) {
+      final role = state.user?.role;
+      if (role == UserRole.vet) {
+        context.go('/vet');
+      } else if (role == UserRole.admin) {
+        context.go('/admin');
+      } else {
+        context.go('/farmer');
+      }
+    } else {
+      context.go('/login');
     }
   }
 
@@ -82,14 +80,6 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
-    // Listen for auth state changes so we can navigate once check completes.
-    ref.listen<AuthState>(authProvider, (previous, next) {
-      if (next.status != AuthStatus.initial &&
-          next.status != AuthStatus.loading) {
-        _navigate();
-      }
-    });
-
     return Scaffold(
       backgroundColor: AppColors.primary,
       body: FadeTransition(
@@ -101,7 +91,6 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // Logo icon
                   Container(
                     width: 100,
                     height: 100,
@@ -115,10 +104,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                       color: Colors.white,
                     ),
                   ),
-
                   const SizedBox(height: 24),
-
-                  // App name
                   Text(
                     'XORA',
                     style: GoogleFonts.manrope(
@@ -128,9 +114,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                       color: Colors.white.withValues(alpha: 0.8),
                     ),
                   ),
-
                   const SizedBox(height: 4),
-
                   Text(
                     'CattleShield',
                     style: GoogleFonts.manrope(
@@ -140,9 +124,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                       letterSpacing: 1,
                     ),
                   ),
-
                   const SizedBox(height: 12),
-
                   Text(
                     'Digital Livestock Insurance',
                     style: GoogleFonts.manrope(
@@ -152,10 +134,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                       letterSpacing: 0.5,
                     ),
                   ),
-
                   const SizedBox(height: 48),
-
-                  // Loading indicator
                   SizedBox(
                     width: 28,
                     height: 28,

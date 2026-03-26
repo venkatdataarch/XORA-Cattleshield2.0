@@ -2,59 +2,54 @@ import '../../features/auth/domain/auth_state.dart';
 import '../../features/auth/domain/user_model.dart';
 
 /// Evaluates redirect logic for [GoRouter] based on the current [AuthState].
-///
-/// Returns the path to redirect to, or `null` if no redirect is needed.
 class AuthGuard {
   const AuthGuard._();
 
-  /// Determines whether the user should be redirected based on auth state
-  /// and the requested [location].
-  ///
   /// Returns a redirect path, or `null` to allow navigation.
   static String? redirect(AuthState authState, String location) {
     final isAuthenticated = authState.isAuthenticated;
     final isLoading = authState.isLoading;
     final isInitial = authState.status == AuthStatus.initial;
 
-    // While auth status is being determined, stay on splash.
-    // But allow auth routes (login, OTP, registration) to proceed.
-    if (isInitial || isLoading) {
-      if (location == '/splash' || _isAuthRoute(location)) return null;
-      return '/splash';
-    }
+    // Never redirect while on splash — splash handles its own navigation.
+    if (location == '/splash') return null;
+
+    // During initial/loading states, don't redirect (avoid loops).
+    if (isInitial || isLoading) return null;
+
+    final isAuthRoute = _isAuthRoute(location);
 
     // Unauthenticated users can only access auth routes.
-    final isAuthRoute = _isAuthRoute(location);
     if (!isAuthenticated) {
       if (isAuthRoute) return null;
       return '/login';
     }
 
-    // Authenticated users trying to access auth routes -> redirect to dashboard.
-    if (isAuthRoute && location != '/splash') {
+    // Authenticated users on login page → go to dashboard.
+    // But allow OTP and registration routes (user might be mid-flow).
+    if (location == '/login') {
       return _dashboardForRole(authState.user?.role);
     }
 
     // Role-based path guards.
     final role = authState.user?.role;
-
-    // Farmers cannot access vet routes.
-    if (role == UserRole.farmer && location.startsWith('/vet')) {
+    if (role == UserRole.farmer && (location.startsWith('/vet') || location.startsWith('/admin'))) {
       return '/farmer';
     }
-
-    // Vets cannot access farmer routes.
-    if (role == UserRole.vet && location.startsWith('/farmer')) {
+    if (role == UserRole.vet && (location.startsWith('/farmer') || location.startsWith('/admin'))) {
       return '/vet';
     }
-
-    // Scan routes are accessible to all authenticated users.
-    // No redirect needed.
+    if (role == UserRole.admin && (location.startsWith('/farmer') || location.startsWith('/vet'))) {
+      return '/admin';
+    }
+    // Agents can access farmer routes
+    if (role == UserRole.agent && location.startsWith('/vet')) {
+      return '/farmer';
+    }
 
     return null;
   }
 
-  /// Returns `true` if [location] is an authentication-related route.
   static bool _isAuthRoute(String location) {
     return location == '/splash' ||
         location == '/login' ||
@@ -62,14 +57,13 @@ class AuthGuard {
         location.startsWith('/register/');
   }
 
-  /// Returns the dashboard path for the given [role].
   static String _dashboardForRole(UserRole? role) {
     switch (role) {
       case UserRole.vet:
         return '/vet';
-      case UserRole.agent:
       case UserRole.admin:
-        return '/farmer'; // agents/admins share the farmer dashboard for now
+        return '/admin';
+      case UserRole.agent:
       case UserRole.farmer:
       case null:
         return '/farmer';

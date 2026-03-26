@@ -52,6 +52,13 @@ class RouteNames {
   static const healthResult = 'health-result';
 
   // ---------------------------------------------------------------------------
+  // Admin
+  // ---------------------------------------------------------------------------
+  static const adminDashboard = 'admin-dashboard';
+  static const auditLogs = 'audit-logs';
+  static const fraudAlerts = 'fraud-alerts';
+
+  // ---------------------------------------------------------------------------
   // Profile
   // ---------------------------------------------------------------------------
   static const profile = 'profile';

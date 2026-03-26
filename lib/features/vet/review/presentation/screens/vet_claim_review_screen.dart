@@ -116,7 +116,7 @@ class _VetClaimReviewScreenState extends ConsumerState<VetClaimReviewScreen> {
                           ),
                           const SizedBox(height: AppSpacing.sm),
                           EvidenceGallery(
-                            evidenceMedia: claim.evidenceMedia!,
+                            media: claim.evidenceMedia!,
                           ),
                           const SizedBox(height: AppSpacing.md),
                         ],

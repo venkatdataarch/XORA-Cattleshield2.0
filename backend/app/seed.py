@@ -361,6 +361,42 @@ async def seed():
         else:
             print("  - Default vet already exists")
 
+        # Seed admin user
+        admin_result = await session.execute(
+            select(User).where(User.phone == "admin001")
+        )
+        if not admin_result.scalar_one_or_none():
+            admin = User(
+                name="UIIC Admin",
+                phone="admin001",
+                role="admin",
+                password_hash=hash_password("admin123"),
+                district="Mumbai",
+                state="Maharashtra",
+            )
+            session.add(admin)
+            print("  ✓ Seeded admin: admin001 / admin123")
+        else:
+            print("  - Admin already exists")
+
+        # Seed field agent user
+        agent_result = await session.execute(
+            select(User).where(User.phone == "agent001")
+        )
+        if not agent_result.scalar_one_or_none():
+            agent = User(
+                name="Suresh Kumar",
+                phone="agent001",
+                role="agent",
+                password_hash=hash_password("agent123"),
+                district="Hyderabad",
+                state="Telangana",
+            )
+            session.add(agent)
+            print("  ✓ Seeded field agent: agent001 / agent123")
+        else:
+            print("  - Field agent already exists")
+
         await session.commit()
         print("\n✅ Seed completed successfully!")
 

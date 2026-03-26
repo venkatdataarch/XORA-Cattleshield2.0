@@ -1,9 +1,9 @@
 import uuid
 import random
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import get_db
@@ -14,6 +14,7 @@ from ..models.user import User
 from ..schemas.claim import ClaimCreateRequest, VetClaimDecisionRequest, ClaimResponse
 from ..middleware.auth import get_current_user, get_current_vet
 from ..utils.file_storage import save_upload
+from .fraud import create_fraud_alert
 
 router = APIRouter(prefix="/claims", tags=["Claims"])
 
@@ -89,6 +90,41 @@ async def create_claim(
     )
     db.add(claim)
     await db.flush()
+
+    # --- Fraud detection checks (Scope 5d) ---
+    fraud_factors = []
+
+    # 1. Early claim: within 30 days of policy inception
+    if policy.start_date:
+        days_since = (datetime.now(timezone.utc).date() - policy.start_date).days
+        if days_since < 30:
+            fraud_factors.append(f"Early claim: {days_since} days after policy inception")
+            await create_fraud_alert(
+                db=db, alert_type="early_claim", risk_level="medium",
+                description=f"Claim {claim_number} filed only {days_since} days after policy inception",
+                user_id=str(user.id), policy_id=str(policy.id), claim_id=str(claim.id),
+                contributing_factors=fraud_factors,
+            )
+
+    # 2. Claim velocity: same farmer >2 claims in 12 months
+    twelve_months_ago = datetime.now(timezone.utc) - timedelta(days=365)
+    from ..models.proposal import Proposal
+    farmer_claims_q = (
+        select(func.count(Claim.id))
+        .join(Policy, Claim.policy_id == Policy.id)
+        .join(Proposal, Policy.proposal_id == Proposal.id)
+        .where(Proposal.farmer_id == user.id, Claim.created_at >= twelve_months_ago)
+    )
+    farmer_claim_count = (await db.execute(farmer_claims_q)).scalar() or 0
+    if farmer_claim_count > 2:
+        fraud_factors.append(f"Claim velocity: {farmer_claim_count} claims in 12 months")
+        await create_fraud_alert(
+            db=db, alert_type="claim_velocity", risk_level="high",
+            description=f"Farmer has {farmer_claim_count} claims in last 12 months",
+            user_id=str(user.id), claim_id=str(claim.id),
+            contributing_factors=fraud_factors,
+        )
+
     return _claim_response(claim)
 
 
@@ -149,18 +185,43 @@ async def muzzle_verify(
     if not claim:
         raise HTTPException(status_code=404, detail="Claim not found")
 
-    # Mock AI muzzle match
-    score = round(random.uniform(85.0, 98.5), 1)
-    match_result = "verified" if score >= 85 else "suspicious"
+    # Mock AI muzzle match — wider range to sometimes trigger fraud alerts
+    score = round(random.uniform(45.0, 99.0), 1)
+    if score >= 80:
+        match_result = "verified"
+    elif score >= 60:
+        match_result = "review_required"
+    else:
+        match_result = "suspicious"
 
     claim.ai_muzzle_match_score = score
     claim.ai_match_result = match_result
     await db.flush()
 
+    # Fraud alert if muzzle match is low
+    if score < 60:
+        await create_fraud_alert(
+            db=db, alert_type="muzzle_mismatch", risk_level="high",
+            description=f"Muzzle match score {score}% — below 60% threshold for claim {claim.claim_number}",
+            risk_score=100 - score,
+            claim_id=str(claim.id), animal_id=str(claim.animal_id),
+            contributing_factors=[f"Similarity score: {score}%", "Below 60% threshold"],
+        )
+    elif score < 80:
+        await create_fraud_alert(
+            db=db, alert_type="muzzle_mismatch", risk_level="medium",
+            description=f"Muzzle match score {score}% — flagged for vet review on claim {claim.claim_number}",
+            risk_score=100 - score,
+            claim_id=str(claim.id), animal_id=str(claim.animal_id),
+            contributing_factors=[f"Similarity score: {score}%", "Between 60-80% — requires vet review"],
+        )
+
     return {
         "match_score": score,
         "result": match_result,
         "message": f"Muzzle match: {score}% confidence",
+        "enrollment_muzzle_images": [],  # Would contain enrollment photos for side-by-side
+        "claim_muzzle_images": [],
     }
 
 

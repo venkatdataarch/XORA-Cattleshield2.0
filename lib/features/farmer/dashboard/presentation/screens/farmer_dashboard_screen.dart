@@ -32,7 +32,7 @@ class _FarmerDashboardScreenState extends ConsumerState<FarmerDashboardScreen> {
 
   Future<void> _onRefresh() async {
     ref.invalidate(farmerDashboardStatsProvider);
-    await ref.read(farmerDashboardStatsProvider.future).catchError((_) {});
+    await ref.read(farmerDashboardStatsProvider.future).catchError((_) => DashboardStats());
     ref.read(authProvider.notifier).refreshUser();
   }
 

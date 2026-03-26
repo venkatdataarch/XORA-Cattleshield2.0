@@ -65,7 +65,7 @@ class FarmerDashboardRepository {
                 data;
             return ApiResult.success(DashboardStats.fromJson(statsData));
           }
-          return const ApiResult.success(DashboardStats());
+          return ApiResult.success(DashboardStats());
         },
         failure: (error) => ApiResult.failure(error),
       );

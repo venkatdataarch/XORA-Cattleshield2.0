@@ -4,7 +4,6 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import '../storage/local_db_service.dart';
 import 'dio_client.dart';
 import '../di/providers.dart';
-import '../../shared/utils/logger.dart';
 
 enum SyncStatus { idle, syncing, error }
 
@@ -66,18 +65,17 @@ class SyncService extends StateNotifier<SyncState> {
   }
 
   Future<void> _updatePendingCount() async {
-    final pending = await _db.getPendingQueueItems();
-    state = state.copyWith(pendingCount: pending.length);
+    final count = await _db.getPendingCount();
+    state = state.copyWith(pendingCount: count);
   }
 
   Future<void> syncAll() async {
     if (state.status == SyncStatus.syncing) return;
 
     state = state.copyWith(status: SyncStatus.syncing);
-    AppLogger.info('SyncService: Starting sync...');
 
     try {
-      final pendingItems = await _db.getPendingQueueItems();
+      final pendingItems = await _db.getPendingItems();
 
       for (final item in pendingItems) {
         await _syncItem(item);
@@ -89,13 +87,11 @@ class SyncService extends StateNotifier<SyncState> {
         lastSyncAt: DateTime.now(),
         lastError: null,
       );
-      AppLogger.info('SyncService: Sync complete.');
     } catch (e) {
       state = state.copyWith(
         status: SyncStatus.error,
         lastError: e.toString(),
       );
-      AppLogger.error('SyncService: Sync failed', e);
     }
   }
 
@@ -103,17 +99,18 @@ class SyncService extends StateNotifier<SyncState> {
     final id = item['id'] as int;
     final action = item['action'] as String;
     final endpoint = item['endpoint'] as String;
-    final payload = jsonDecode(item['payload'] as String);
+    final payload = item['payload'] != null
+        ? jsonDecode(item['payload'] as String)
+        : <String, dynamic>{};
     final retryCount = item['retry_count'] as int? ?? 0;
 
     if (retryCount >= 5) {
-      await _db.updateQueueItemStatus(id, 'failed');
-      AppLogger.warning('SyncService: Item $id exceeded max retries');
+      await _db.updateStatus(id: id, status: 'failed');
       return;
     }
 
     try {
-      await _db.updateQueueItemStatus(id, 'syncing');
+      await _db.updateStatus(id: id, status: 'syncing');
 
       switch (action) {
         case 'POST':
@@ -129,11 +126,9 @@ class SyncService extends StateNotifier<SyncState> {
           await _dio.post(endpoint, data: payload);
       }
 
-      await _db.updateQueueItemStatus(id, 'synced');
-      AppLogger.info('SyncService: Synced item $id ($action $endpoint)');
+      await _db.updateStatus(id: id, status: 'synced');
     } catch (e) {
-      await _db.incrementQueueItemRetry(id);
-      AppLogger.error('SyncService: Failed to sync item $id', e);
+      await _db.updateStatus(id: id, status: 'pending', incrementRetry: true);
     }
   }
 
@@ -146,8 +141,8 @@ class SyncService extends StateNotifier<SyncState> {
     await _db.addToQueue(
       action: action,
       endpoint: endpoint,
-      payload: jsonEncode(payload),
-      images: imagePaths != null ? jsonEncode(imagePaths) : null,
+      payload: payload,
+      images: imagePaths,
     );
     await _updatePendingCount();
   }

@@ -6,7 +6,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from app.database import create_tables
-from app.routers import auth, animals, proposals, policies, claims, vet, certificates, form_schemas, ai
+from app.routers import auth, animals, proposals, policies, claims, vet, certificates, form_schemas, ai, audit_logs, fraud
+from app.middleware.audit import AuditMiddleware
 
 
 @asynccontextmanager
@@ -35,6 +36,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Audit trail middleware — logs all mutating API calls
+app.add_middleware(AuditMiddleware)
+
 # Static files for uploads
 if os.path.exists("uploads"):
     app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
@@ -49,6 +53,8 @@ app.include_router(vet.router, prefix="/api")
 app.include_router(certificates.router, prefix="/api")
 app.include_router(form_schemas.router, prefix="/api")
 app.include_router(ai.router, prefix="/api")
+app.include_router(audit_logs.router, prefix="/api")
+app.include_router(fraud.router, prefix="/api")
 
 
 @app.get("/")

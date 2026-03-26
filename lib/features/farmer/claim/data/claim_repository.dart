@@ -114,7 +114,7 @@ class ClaimRepository {
       );
 
       return result.when(
-        success: (_) => const ApiResult.success(null),
+        success: (_) => ApiResult.success(null),
         failure: (error) => ApiResult.failure(error),
       );
     } on ApiException catch (e) {

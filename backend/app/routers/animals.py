@@ -11,6 +11,7 @@ from ..models.user import User
 from ..schemas.animal import AnimalCreateRequest, AnimalUpdateRequest, AnimalResponse
 from ..middleware.auth import get_current_user
 from ..utils.file_storage import save_upload
+from .fraud import create_fraud_alert
 
 router = APIRouter(prefix="/animals", tags=["Animals"])
 
@@ -151,12 +152,50 @@ async def muzzle_scan(
 
     # Generate mock muzzle ID
     muzzle_id = f"MZL-{uuid.uuid4().hex[:12].upper()}"
+
+    # --- Duplicate detection (Scope 2d) ---
+    # Check if any existing animal has a muzzle_id (simulate biometric match)
+    existing = await db.execute(
+        select(Animal).where(
+            Animal.muzzle_id.isnot(None),
+            Animal.id != animal_id,
+        )
+    )
+    existing_animals = existing.scalars().all()
+    duplicate_match = None
+    for ea in existing_animals:
+        # Simulate muzzle comparison — mock similarity score
+        similarity = random.uniform(0.3, 1.0)
+        if similarity > 0.80:
+            duplicate_match = {
+                "matched_animal_id": ea.id,
+                "matched_unique_id": ea.unique_id,
+                "similarity_score": round(similarity * 100, 1),
+                "owner_id": ea.user_id,
+            }
+            # Create fraud alert
+            await create_fraud_alert(
+                db=db,
+                alert_type="duplicate_muzzle",
+                risk_level="high",
+                description=f"Duplicate muzzle detected: new animal {animal.unique_id} matches existing {ea.unique_id} ({round(similarity * 100, 1)}% similarity)",
+                risk_score=similarity * 100,
+                user_id=str(user.id),
+                animal_id=str(animal_id),
+            )
+            break
+
     animal.muzzle_id = muzzle_id
     animal.muzzle_images = image_urls
     await db.flush()
 
-    return {
+    response = {
         "muzzle_id": muzzle_id,
         "images": image_urls,
         "message": "Muzzle scan processed successfully",
     }
+    if duplicate_match:
+        response["duplicate_warning"] = duplicate_match
+        response["message"] = "WARNING: Possible duplicate animal detected"
+
+    return response
