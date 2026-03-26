@@ -59,7 +59,7 @@ class _FarmerDashboardScreenState extends ConsumerState<FarmerDashboardScreen> {
           ),
           IconButton(
             icon: const Icon(Icons.person_outline),
-            onPressed: () => context.push('/profile'),
+            onPressed: () => context.go('/farmer/profile'),
           ),
         ],
       ),
@@ -131,55 +131,6 @@ class _FarmerDashboardScreenState extends ConsumerState<FarmerDashboardScreen> {
           ),
         ),
       ),
-      bottomNavigationBar: _buildBottomNav(context),
-    );
-  }
-
-  Widget _buildBottomNav(BuildContext context) {
-    return BottomNavigationBar(
-      currentIndex: 0,
-      type: BottomNavigationBarType.fixed,
-      selectedItemColor: AppColors.primary,
-      unselectedItemColor: AppColors.textTertiary,
-      backgroundColor: AppColors.surface,
-      elevation: 8,
-      onTap: (index) {
-        switch (index) {
-          case 0:
-            break; // Already on dashboard
-          case 1:
-            context.push('/farmer/animals');
-            break;
-          case 2:
-            context.push('/farmer/policies');
-            break;
-          case 3:
-            context.push('/profile');
-            break;
-        }
-      },
-      items: const [
-        BottomNavigationBarItem(
-          icon: Icon(Icons.dashboard_outlined),
-          activeIcon: Icon(Icons.dashboard),
-          label: 'Dashboard',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.pets_outlined),
-          activeIcon: Icon(Icons.pets),
-          label: 'Animals',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.policy_outlined),
-          activeIcon: Icon(Icons.policy),
-          label: 'Policies',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.person_outline),
-          activeIcon: Icon(Icons.person),
-          label: 'Profile',
-        ),
-      ],
     );
   }
 }

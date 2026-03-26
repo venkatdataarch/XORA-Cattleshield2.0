@@ -31,6 +31,9 @@ import '../../features/admin/presentation/screens/fraud_alerts_screen.dart';
 // Photo capture
 import '../../features/ai/photo_capture/presentation/screens/guided_photo_capture_screen.dart';
 
+// Profile
+import '../../features/farmer/profile/presentation/screens/profile_screen.dart';
+
 // Vet screens
 import '../../features/vet/dashboard/presentation/screens/vet_dashboard_screen.dart';
 import '../../features/vet/review/presentation/screens/vet_proposal_review_screen.dart';
@@ -230,8 +233,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: '/farmer/profile',
                 name: RouteNames.profile,
-                builder: (context, state) =>
-                    const _Placeholder(title: 'Profile'),
+                builder: (context, state) => const ProfileScreen(),
               ),
             ],
           ),
