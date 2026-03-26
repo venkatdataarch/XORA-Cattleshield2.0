@@ -67,8 +67,23 @@ async def register(req: RegisterRequest, db: AsyncSession = Depends(get_db)):
 
 @router.post("/login", response_model=TokenResponse)
 async def login(req: LoginRequest, db: AsyncSession = Depends(get_db)):
+    # Password-based login — for vet, agent, admin
+    agent_id = req.effective_agent_id
+    login_id = agent_id or (req.phone if req.password else None)
+
+    if login_id and req.password:
+        result = await db.execute(select(User).where(User.phone == login_id))
+        user = result.scalar_one_or_none()
+        if not user or not user.password_hash:
+            raise HTTPException(status_code=401, detail="Invalid credentials")
+        if not verify_password(req.password, user.password_hash):
+            raise HTTPException(status_code=401, detail="Invalid credentials")
+
+        token = create_access_token({"sub": str(user.id), "role": user.role})
+        return TokenResponse(token=token, user=_user_response(user))
+
+    # OTP-based login for farmers — send OTP (mock: just return success)
     if req.phone:
-        # OTP-based login for farmers — send OTP (mock: just return success)
         result = await db.execute(select(User).where(User.phone == req.phone))
         user = result.scalar_one_or_none()
         if not user:
@@ -80,19 +95,6 @@ async def login(req: LoginRequest, db: AsyncSession = Depends(get_db)):
             token="otp-pending",
             user=_user_response(user),
         )
-
-    agent_id = req.effective_agent_id
-    if agent_id and req.password:
-        # Password-based login for vet/agent
-        result = await db.execute(select(User).where(User.phone == agent_id))
-        user = result.scalar_one_or_none()
-        if not user or not user.password_hash:
-            raise HTTPException(status_code=401, detail="Invalid credentials")
-        if not verify_password(req.password, user.password_hash):
-            raise HTTPException(status_code=401, detail="Invalid credentials")
-
-        token = create_access_token({"sub": str(user.id), "role": user.role})
-        return TokenResponse(token=token, user=_user_response(user))
 
     raise HTTPException(status_code=400, detail="Provide phone or agent_id+password")
 

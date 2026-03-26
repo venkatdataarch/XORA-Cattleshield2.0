@@ -337,7 +337,7 @@ async def seed():
                     animal_types=schema_data["animal_types"],
                 )
                 session.add(schema)
-                print(f"  ✓ Seeded form schema: {schema_data['form_type']}")
+                print(f"  + Seeded form schema: {schema_data['form_type']}")
             else:
                 print(f"  - Form schema already exists: {schema_data['form_type']}")
 
@@ -357,7 +357,7 @@ async def seed():
                 state="Telangana",
             )
             session.add(vet)
-            print("  ✓ Seeded default vet: vet001 / vet123")
+            print("  + Seeded default vet: vet001 / vet123")
         else:
             print("  - Default vet already exists")
 
@@ -375,7 +375,7 @@ async def seed():
                 state="Maharashtra",
             )
             session.add(admin)
-            print("  ✓ Seeded admin: admin001 / admin123")
+            print("  + Seeded admin: admin001 / admin123")
         else:
             print("  - Admin already exists")
 
@@ -393,12 +393,12 @@ async def seed():
                 state="Telangana",
             )
             session.add(agent)
-            print("  ✓ Seeded field agent: agent001 / agent123")
+            print("  + Seeded field agent: agent001 / agent123")
         else:
             print("  - Field agent already exists")
 
         await session.commit()
-        print("\n✅ Seed completed successfully!")
+        print("\nSeed completed successfully!")
 
 
 if __name__ == "__main__":
