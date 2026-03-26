@@ -92,16 +92,23 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Container(
-                    width: 100,
-                    height: 100,
+                    width: 120,
+                    height: 120,
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(24),
                     ),
-                    child: const Icon(
-                      Icons.shield,
-                      size: 56,
-                      color: Colors.white,
+                    clipBehavior: Clip.antiAlias,
+                    child: Image.asset(
+                      'assets/images/xora_logo.jpeg',
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Container(
+                        color: Colors.white.withValues(alpha: 0.15),
+                        child: const Icon(
+                          Icons.shield,
+                          size: 56,
+                          color: Colors.white,
+                        ),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 24),
