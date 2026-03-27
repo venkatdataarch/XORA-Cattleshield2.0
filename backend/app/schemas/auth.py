@@ -61,6 +61,15 @@ class UserResponse(BaseModel):
         from_attributes = True
 
 
+class ProfileUpdateRequest(BaseModel):
+    name: str | None = None
+    email: str | None = None
+    address: str | None = None
+    village: str | None = None
+    district: str | None = None
+    state: str | None = None
+
+
 class TokenResponse(BaseModel):
     token: str
     user: UserResponse

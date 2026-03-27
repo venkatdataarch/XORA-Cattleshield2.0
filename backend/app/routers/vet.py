@@ -1,5 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import select
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import get_db
@@ -220,4 +220,128 @@ async def get_proposal_detail(
             "father_or_husband_name": farmer.father_or_husband_name,
             "occupation": farmer.occupation,
         } if farmer else None,
+    }
+
+
+@router.get("/reviewed")
+async def get_reviewed_items(
+    status: str | None = Query(None, description="Filter: vet_approved, vet_rejected, or all"),
+    db: AsyncSession = Depends(get_db),
+    vet: User = Depends(get_current_vet),
+):
+    """Get all proposals and claims that this vet has reviewed (approved + rejected)."""
+    reviewed_statuses = ["vet_approved", "vet_rejected"]
+    if status and status in reviewed_statuses:
+        reviewed_statuses = [status]
+
+    # Reviewed proposals
+    prop_result = await db.execute(
+        select(Proposal).where(
+            Proposal.status.in_(reviewed_statuses + ["uiic_sent", "policy_created"]),
+        ).order_by(Proposal.vet_reviewed_at.desc())
+    )
+    proposals = prop_result.scalars().all()
+
+    proposal_list = []
+    for p in proposals:
+        animal_result = await db.execute(
+            select(Animal).where(Animal.id == p.animal_id)
+        )
+        animal = animal_result.scalar_one_or_none()
+        proposal_list.append({
+            "id": str(p.id),
+            "type": "proposal",
+            "animal_name": p.animal_name,
+            "animal_species": p.animal_species,
+            "status": p.status,
+            "sum_insured": p.sum_insured,
+            "reviewed_at": to_ist(p.vet_reviewed_at),
+            "submitted_at": to_ist(p.submitted_at),
+            "animal_tag": animal.unique_id if animal else None,
+        })
+
+    # Reviewed claims
+    claim_statuses = ["vet_approved", "vet_rejected"]
+    if status and status in claim_statuses:
+        claim_statuses = [status]
+    else:
+        claim_statuses = ["vet_approved", "vet_rejected", "uiic_processing", "settled", "repudiated"]
+
+    claim_result = await db.execute(
+        select(Claim).where(
+            Claim.status.in_(claim_statuses),
+        ).order_by(Claim.created_at.desc())
+    )
+    claims = claim_result.scalars().all()
+
+    claim_list = []
+    for c in claims:
+        claim_list.append({
+            "id": str(c.id),
+            "type": "claim",
+            "claim_number": c.claim_number,
+            "animal_name": c.animal_name,
+            "claim_type": c.type,
+            "status": c.status,
+            "policy_number": c.policy_number,
+            "reviewed_at": to_ist(c.created_at),
+        })
+
+    # Stats
+    approved_count = sum(1 for p in proposal_list if p["status"] in ("vet_approved", "uiic_sent", "policy_created"))
+    approved_count += sum(1 for c in claim_list if c["status"] in ("vet_approved", "uiic_processing", "settled"))
+    rejected_count = sum(1 for p in proposal_list if p["status"] == "vet_rejected")
+    rejected_count += sum(1 for c in claim_list if c["status"] in ("vet_rejected", "repudiated"))
+
+    return {
+        "proposals": proposal_list,
+        "claims": claim_list,
+        "approved_count": approved_count,
+        "rejected_count": rejected_count,
+        "total": len(proposal_list) + len(claim_list),
+    }
+
+
+@router.get("/stats")
+async def get_vet_stats(
+    db: AsyncSession = Depends(get_db),
+    vet: User = Depends(get_current_vet),
+):
+    """Get vet-specific stats for profile screen."""
+    # Count approved proposals
+    result = await db.execute(
+        select(func.count(Proposal.id)).where(
+            Proposal.status.in_(["vet_approved", "uiic_sent", "policy_created"]),
+        )
+    )
+    approved_proposals = result.scalar() or 0
+
+    # Count rejected proposals
+    result = await db.execute(
+        select(func.count(Proposal.id)).where(
+            Proposal.status == "vet_rejected",
+        )
+    )
+    rejected_proposals = result.scalar() or 0
+
+    # Count approved claims
+    result = await db.execute(
+        select(func.count(Claim.id)).where(
+            Claim.status.in_(["vet_approved", "uiic_processing", "settled"]),
+        )
+    )
+    approved_claims = result.scalar() or 0
+
+    # Count rejected claims
+    result = await db.execute(
+        select(func.count(Claim.id)).where(
+            Claim.status.in_(["vet_rejected", "repudiated"]),
+        )
+    )
+    rejected_claims = result.scalar() or 0
+
+    return {
+        "approved_count": approved_proposals + approved_claims,
+        "rejected_count": rejected_proposals + rejected_claims,
+        "total_reviewed": approved_proposals + approved_claims + rejected_proposals + rejected_claims,
     }

@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, date, timedelta
 
 from fastapi import APIRouter, Depends
 from sqlalchemy import select, func
@@ -24,9 +24,12 @@ async def get_dashboard_stats(
     Get aggregated dashboard statistics for the logged-in farmer.
     Returns counts for animals, policies, proposals, and claims.
     """
-    user_id = user.id
-    now = datetime.utcnow()
-    thirty_days = now + timedelta(days=30)
+    user_id = str(user.id)
+    today = date.today()
+    thirty_days = today + timedelta(days=30)
+
+    # Subquery: all animal IDs belonging to this farmer
+    farmer_animal_ids = select(Animal.id).where(Animal.user_id == user_id)
 
     # Total animals
     result = await db.execute(
@@ -34,13 +37,11 @@ async def get_dashboard_stats(
     )
     total_animals = result.scalar() or 0
 
-    # Active policies (not expired)
+    # Active policies (end_date is a Date column, compare with date)
     result = await db.execute(
         select(func.count(Policy.id)).where(
-            Policy.animal_id.in_(
-                select(Animal.id).where(Animal.user_id == user_id)
-            ),
-            Policy.end_date >= now,
+            Policy.animal_id.in_(farmer_animal_ids),
+            Policy.end_date >= today,
         )
     )
     active_policies = result.scalar() or 0
@@ -48,10 +49,8 @@ async def get_dashboard_stats(
     # Expiring soon (within 30 days)
     result = await db.execute(
         select(func.count(Policy.id)).where(
-            Policy.animal_id.in_(
-                select(Animal.id).where(Animal.user_id == user_id)
-            ),
-            Policy.end_date >= now,
+            Policy.animal_id.in_(farmer_animal_ids),
+            Policy.end_date >= today,
             Policy.end_date <= thirty_days,
         )
     )
@@ -60,30 +59,26 @@ async def get_dashboard_stats(
     # Expired policies
     result = await db.execute(
         select(func.count(Policy.id)).where(
-            Policy.animal_id.in_(
-                select(Animal.id).where(Animal.user_id == user_id)
-            ),
-            Policy.end_date < now,
+            Policy.animal_id.in_(farmer_animal_ids),
+            Policy.end_date < today,
         )
     )
     expired_policies = result.scalar() or 0
 
-    # Pending proposals (submitted, not yet approved/rejected)
+    # Pending proposals — submitted or vet_approved but not yet policy_created
     result = await db.execute(
         select(func.count(Proposal.id)).where(
             Proposal.farmer_id == user_id,
-            Proposal.status.in_(["draft", "submitted", "vet_review"]),
+            Proposal.status.in_(["submitted", "vet_review", "vet_approved", "uiic_sent"]),
         )
     )
     pending_proposals = result.scalar() or 0
 
-    # Pending claims
+    # Pending claims — everything that is not settled or rejected
     result = await db.execute(
         select(func.count(Claim.id)).where(
-            Claim.animal_id.in_(
-                select(Animal.id).where(Animal.user_id == user_id)
-            ),
-            Claim.status.in_(["submitted", "vet_review"]),
+            Claim.animal_id.in_(farmer_animal_ids),
+            Claim.status.notin_(["settled", "repudiated"]),
         )
     )
     pending_claims = result.scalar() or 0

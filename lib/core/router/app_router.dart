@@ -35,15 +35,21 @@ import '../../features/ai/photo_capture/presentation/screens/guided_photo_captur
 // Muzzle identify
 import '../../features/ai/muzzle_scan/presentation/screens/standalone_identify_screen.dart';
 
-// Profile
-import '../../features/farmer/profile/presentation/screens/profile_screen.dart';
+// Profile (shared widget with edit capability)
+import '../../shared/widgets/profile_screen.dart';
 
 // Vet screens
 import '../../features/vet/dashboard/presentation/screens/vet_dashboard_screen.dart';
 import '../../features/vet/review/presentation/screens/vet_proposal_review_screen.dart';
 import '../../features/vet/review/presentation/screens/vet_claim_review_screen.dart';
+import '../../features/vet/review/presentation/screens/vet_reviews_list_screen.dart';
 import '../../features/vet/certificate/presentation/screens/certificate_form_screen.dart';
 import '../../features/vet/certificate/presentation/screens/certificate_preview_screen.dart';
+import '../../features/vet/certificate/presentation/screens/vet_certificates_list_screen.dart';
+import '../../features/vet/profile/presentation/screens/vet_profile_screen.dart';
+
+// Admin screens (profile)
+import '../../features/admin/presentation/screens/admin_profile_screen.dart';
 
 import '../constants/app_colors.dart';
 import 'auth_guard.dart';
@@ -276,7 +282,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: '/vet/reviews',
                 builder: (context, state) =>
-                    const _Placeholder(title: 'Vet Reviews'),
+                    const VetReviewsListScreen(),
                 routes: [
                   GoRoute(
                     path: 'proposals/:id',
@@ -302,7 +308,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: '/vet/certificates',
                 builder: (context, state) =>
-                    const _Placeholder(title: 'Certificates'),
+                    const VetCertificatesListScreen(),
                 routes: [
                   GoRoute(
                     path: 'new/:type/:entityId',
@@ -329,7 +335,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: '/vet/profile',
                 builder: (context, state) =>
-                    const _Placeholder(title: 'Vet Profile'),
+                    const VetProfileScreen(),
               ),
             ],
           ),
@@ -376,7 +382,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: '/admin/profile',
                 builder: (context, state) =>
-                    const _Placeholder(title: 'Admin Profile'),
+                    const AdminProfileScreen(),
               ),
             ],
           ),

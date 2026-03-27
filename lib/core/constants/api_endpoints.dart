@@ -69,6 +69,8 @@ class ApiEndpoints {
 
   // Vet
   static const String vetPending = '/vet/pending';
+  static const String vetReviewed = '/vet/reviewed';
+  static const String vetStats = '/vet/stats';
   static const String vetCertificates = '/vet-certificates';
 
   // AI

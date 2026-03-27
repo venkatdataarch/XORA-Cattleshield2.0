@@ -6,7 +6,7 @@ from ..database import get_db
 from ..models.user import User
 from ..schemas.auth import (
     LoginRequest, OtpRequest, OtpVerifyRequest,
-    RegisterRequest, UserResponse, TokenResponse,
+    RegisterRequest, ProfileUpdateRequest, UserResponse, TokenResponse,
 )
 from ..utils.security import hash_password, verify_password, create_access_token
 from ..middleware.auth import get_current_user
@@ -142,4 +142,27 @@ async def verify_otp(req: OtpVerifyRequest, db: AsyncSession = Depends(get_db)):
 
 @router.get("/me", response_model=UserResponse)
 async def get_me(user: User = Depends(get_current_user)):
+    return _user_response(user)
+
+
+@router.put("/me", response_model=UserResponse)
+async def update_me(
+    req: ProfileUpdateRequest,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Update the current user's profile fields."""
+    if req.name is not None:
+        user.name = req.name
+    if req.email is not None:
+        user.email = req.email
+    if req.address is not None:
+        user.address = req.address
+    if req.village is not None:
+        user.village = req.village
+    if req.district is not None:
+        user.district = req.district
+    if req.state is not None:
+        user.state = req.state
+    await db.flush()
     return _user_response(user)
