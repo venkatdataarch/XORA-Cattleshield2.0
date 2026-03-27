@@ -9,8 +9,9 @@ python-multipart==0.0.18
 pydantic-settings==2.7.0
 python-dotenv==1.0.1
 aiofiles==24.1.0
-torch>=2.0.0
-torchvision>=0.15.0
+onnxruntime>=1.17.0
 Pillow>=10.0.0
 numpy>=1.24.0
+faiss-cpu>=1.13.0
 scikit-learn>=1.3.0
+ultralytics>=8.0.0

@@ -474,6 +474,126 @@ async def muzzle_verify(
 
 
 # ---------------------------------------------------------------------------
+# FAISS-powered Muzzle Search (Find Animal)
+# ---------------------------------------------------------------------------
+@router.post("/faiss-identify")
+async def faiss_identify_muzzle(
+    file: UploadFile = File(...),
+    species: str = "cow",
+    user: User = Depends(get_current_user),
+):
+    """
+    Identify an animal using FAISS vector similarity search.
+    Uses ResNet-50 ONNX embedding + FAISS IndexFlatIP (cosine similarity).
+    Much faster than brute-force DB comparison for large herds.
+    """
+    import tempfile, os
+
+    image_bytes = await file.read()
+
+    # Save to temp file for processing
+    with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as tmp:
+        tmp.write(image_bytes)
+        tmp_path = tmp.name
+
+    try:
+        from ..ai.faiss_matcher import get_matcher
+        matcher = get_matcher()
+        result = matcher.identify_muzzle(tmp_path, species=species, top_k=5)
+        return result
+    except Exception as e:
+        logger.error(f"FAISS identify error: {e}")
+        return {
+            "success": False,
+            "error": str(e),
+            "matches": []
+        }
+    finally:
+        os.unlink(tmp_path)
+
+
+@router.post("/faiss-register/{animal_id}")
+async def faiss_register_muzzle(
+    animal_id: str,
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """
+    Register a muzzle in the FAISS index for fast future identification.
+    Called after standard muzzle registration to index the embedding.
+    """
+    result = await db.execute(select(Animal).where(Animal.id == animal_id))
+    animal = result.scalar_one_or_none()
+    if not animal:
+        raise HTTPException(status_code=404, detail="Animal not found")
+
+    import tempfile, os
+    image_bytes = await file.read()
+
+    with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as tmp:
+        tmp.write(image_bytes)
+        tmp_path = tmp.name
+
+    try:
+        from ..ai.faiss_matcher import get_matcher
+        matcher = get_matcher()
+        result = matcher.register_muzzle(
+            image_path=tmp_path,
+            animal_id=str(animal.id),
+            species=animal.species or "cow",
+            angle="front"
+        )
+        return result
+    except Exception as e:
+        logger.error(f"FAISS register error: {e}")
+        return {"success": False, "error": str(e)}
+    finally:
+        os.unlink(tmp_path)
+
+
+@router.post("/faiss-verify-claim")
+async def faiss_verify_claim(
+    animal_id: str,
+    file: UploadFile = File(...),
+    species: str = "cow",
+    user: User = Depends(get_current_user),
+):
+    """
+    Verify a claim muzzle against registered muzzle using FAISS.
+    Used for post-mortem verification.
+    """
+    import tempfile, os
+    image_bytes = await file.read()
+
+    with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as tmp:
+        tmp.write(image_bytes)
+        tmp_path = tmp.name
+
+    try:
+        from ..ai.faiss_matcher import get_matcher
+        matcher = get_matcher()
+        result = matcher.verify_claim_muzzle(tmp_path, animal_id, species)
+        return result
+    except Exception as e:
+        logger.error(f"FAISS verify error: {e}")
+        return {"success": False, "error": str(e), "verified": False}
+    finally:
+        os.unlink(tmp_path)
+
+
+@router.get("/faiss-stats")
+async def faiss_stats(user: User = Depends(get_current_user)):
+    """Get FAISS index statistics."""
+    try:
+        from ..ai.faiss_matcher import get_matcher
+        matcher = get_matcher()
+        return matcher.get_stats()
+    except Exception as e:
+        return {"error": str(e)}
+
+
+# ---------------------------------------------------------------------------
 # Health Score AI
 # ---------------------------------------------------------------------------
 @router.get("/health-score/{animal_id}")

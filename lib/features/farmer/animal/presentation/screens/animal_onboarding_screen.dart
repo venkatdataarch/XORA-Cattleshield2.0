@@ -1,6 +1,8 @@
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
+
 import 'package:camera/camera.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
@@ -13,6 +15,7 @@ import '../../../../../core/constants/app_colors.dart';
 import '../../../../../core/di/providers.dart';
 import '../../../../../shared/widgets/loading_overlay.dart';
 import '../../../../ai/muzzle_scan/presentation/screens/auto_capture_muzzle_screen.dart';
+import '../../../../ai/muzzle_scan/presentation/screens/native_muzzle_camera_screen.dart';
 import '../../domain/animal_model.dart';
 import '../providers/animal_provider.dart';
 import '../widgets/species_selector.dart';
@@ -523,26 +526,58 @@ class _AnimalOnboardingScreenState
         ? 'cow'
         : 'mule';
 
-    await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => AutoCaptureMuzzleScreen(
-          species: speciesStr,
-          onAllCaptured: (captures) {
-            if (mounted) {
-              setState(() {
-                _muzzleCaptureData = captures;
-                _muzzleImages.clear();
-                for (final c in captures) {
-                  _muzzleImages.add(XFile(c.imagePath));
-                }
-              });
-            }
-            Navigator.pop(context);
-          },
+    // Use native CameraX + YOLOv8 on Android, fallback on other platforms
+    if (!kIsWeb && Platform.isAndroid) {
+      final captures = await Navigator.push<List<MuzzleScanCapture>>(
+        context,
+        MaterialPageRoute(
+          builder: (_) => NativeMuzzleCameraScreen(
+            species: speciesStr,
+          ),
         ),
-      ),
-    );
+      );
+
+      if (captures != null && captures.isNotEmpty && mounted) {
+        setState(() {
+          _muzzleCaptureData = captures.map((c) => MuzzleCaptureData(
+            imagePath: c.imagePath,
+            angle: c.angle,
+            timestamp: DateTime.tryParse(c.timestamp) ?? DateTime.now(),
+            latitude: c.latitude,
+            longitude: c.longitude,
+            gpsAccuracy: null,
+            sha256Hash: c.sha256Hash,
+            species: c.species,
+          )).toList();
+          _muzzleImages.clear();
+          for (final c in captures) {
+            _muzzleImages.add(XFile(c.imagePath));
+          }
+        });
+      }
+    } else {
+      // Fallback: use old auto-capture screen
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => AutoCaptureMuzzleScreen(
+            species: speciesStr,
+            onAllCaptured: (captures) {
+              if (mounted) {
+                setState(() {
+                  _muzzleCaptureData = captures;
+                  _muzzleImages.clear();
+                  for (final c in captures) {
+                    _muzzleImages.add(XFile(c.imagePath));
+                  }
+                });
+              }
+              Navigator.pop(context);
+            },
+          ),
+        ),
+      );
+    }
   }
 
   Widget _buildStep1Muzzle() {
