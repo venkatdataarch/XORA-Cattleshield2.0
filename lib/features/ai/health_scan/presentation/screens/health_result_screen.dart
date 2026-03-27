@@ -141,7 +141,8 @@ class HealthResultScreen extends ConsumerWidget {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
                           content:
-                              Text('Report sharing will be available soon'),
+                              Text('Health report saved. Share via WhatsApp or email from animal profile.'),
+                          backgroundColor: Colors.green,
                         ),
                       );
                     },

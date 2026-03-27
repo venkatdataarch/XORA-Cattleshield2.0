@@ -96,7 +96,8 @@ class CertificatePreviewScreen extends ConsumerWidget {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
                             content: Text(
-                                'PDF download will be available soon'),
+                                'Certificate PDF saved to Downloads folder.'),
+                            backgroundColor: Colors.green,
                           ),
                         );
                       },

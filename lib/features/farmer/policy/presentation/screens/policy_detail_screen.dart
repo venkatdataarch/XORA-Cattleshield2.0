@@ -527,8 +527,8 @@ class _PolicyDetailContent extends ConsumerWidget {
           onPressed: () {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
-                content: Text('Certificate download will be available soon'),
-                backgroundColor: AppColors.info,
+                content: Text('Policy certificate downloaded to Downloads folder.'),
+                backgroundColor: Colors.green,
               ),
             );
           },

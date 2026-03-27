@@ -34,6 +34,11 @@ import '../../features/admin/presentation/screens/fraud_alerts_screen.dart';
 import '../../features/ai/photo_capture/presentation/screens/guided_photo_capture_screen.dart';
 // Muzzle identify
 import '../../features/ai/muzzle_scan/presentation/screens/standalone_identify_screen.dart';
+import '../../features/ai/muzzle_scan/presentation/screens/native_muzzle_camera_screen.dart';
+import '../../features/ai/muzzle_scan/presentation/screens/muzzle_result_screen.dart';
+import '../../features/ai/health_scan/presentation/screens/health_capture_screen.dart';
+import '../../features/ai/health_scan/presentation/screens/health_result_screen.dart';
+import '../../features/farmer/animal/domain/animal_model.dart';
 
 // Profile (shared widget with edit capability)
 import '../../shared/widgets/profile_screen.dart';
@@ -399,35 +404,35 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/scan/muzzle/:animalId',
         name: RouteNames.muzzleCapture,
-        builder: (context, state) => _Placeholder(
-          title: 'Muzzle Capture (${state.pathParameters['animalId']})',
+        builder: (context, state) => NativeMuzzleCameraScreen(
+          species: state.uri.queryParameters['species'] ?? 'cow',
         ),
       ),
       GoRoute(
         path: '/scan/muzzle/identify/:animalId',
         name: RouteNames.muzzleIdentify,
-        builder: (context, state) => _Placeholder(
-          title: 'Muzzle Identify (${state.pathParameters['animalId']})',
+        builder: (context, state) => NativeMuzzleCameraScreen(
+          species: state.uri.queryParameters['species'] ?? 'cow',
         ),
       ),
       GoRoute(
         path: '/scan/muzzle/result',
         name: RouteNames.muzzleResult,
-        builder: (context, state) =>
-            const _Placeholder(title: 'Muzzle Result'),
+        builder: (context, state) => const MuzzleResultScreen(),
       ),
       GoRoute(
         path: '/scan/health/:animalId',
         name: RouteNames.healthCapture,
-        builder: (context, state) => _Placeholder(
-          title: 'Health Capture (${state.pathParameters['animalId']})',
+        builder: (context, state) => HealthCaptureScreen(
+          animalId: state.pathParameters['animalId'] ?? '',
+          species: _parseSpecies(state.uri.queryParameters['species']),
+          sex: _parseSex(state.uri.queryParameters['sex']),
         ),
       ),
       GoRoute(
         path: '/scan/health/result',
         name: RouteNames.healthResult,
-        builder: (context, state) =>
-            const _Placeholder(title: 'Health Result'),
+        builder: (context, state) => const HealthResultScreen(),
       ),
 
       // 360° guided photo capture route
@@ -663,6 +668,33 @@ class _CattleShieldNavBar extends StatelessWidget {
 // ---------------------------------------------------------------------------
 // Placeholder screen for routes whose real screens haven't been built yet
 // ---------------------------------------------------------------------------
+
+// Helper functions for parsing query parameters
+AnimalSpecies _parseSpecies(String? s) {
+  switch (s?.toLowerCase()) {
+    case 'buffalo':
+      return AnimalSpecies.buffalo;
+    case 'mule':
+      return AnimalSpecies.mule;
+    case 'horse':
+      return AnimalSpecies.horse;
+    case 'donkey':
+      return AnimalSpecies.donkey;
+    default:
+      return AnimalSpecies.cow;
+  }
+}
+
+AnimalSex? _parseSex(String? s) {
+  switch (s?.toLowerCase()) {
+    case 'male':
+      return AnimalSex.male;
+    case 'female':
+      return AnimalSex.female;
+    default:
+      return null;
+  }
+}
 
 class _Placeholder extends StatelessWidget {
   final String title;
