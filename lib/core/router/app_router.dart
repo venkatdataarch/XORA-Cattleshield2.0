@@ -18,6 +18,7 @@ import '../../features/farmer/proposal/presentation/screens/proposal_list_screen
 import '../../features/farmer/proposal/presentation/screens/proposal_form_screen.dart';
 import '../../features/farmer/proposal/presentation/screens/proposal_detail_screen.dart';
 import '../../features/farmer/claim/presentation/screens/claim_list_screen.dart';
+import '../../features/farmer/claim/presentation/screens/select_policy_for_claim_screen.dart';
 import '../../features/farmer/claim/presentation/screens/claim_form_screen.dart';
 import '../../features/farmer/claim/presentation/screens/claim_detail_screen.dart';
 import '../../features/farmer/claim/presentation/screens/claim_evidence_upload_screen.dart';
@@ -140,6 +141,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                     name: RouteNames.claimList,
                     builder: (context, state) => const ClaimListScreen(),
                     routes: [
+                      GoRoute(
+                        path: 'new',
+                        builder: (context, state) => const SelectPolicyForClaimScreen(),
+                      ),
                       GoRoute(
                         path: 'new/:policyId',
                         name: RouteNames.claimForm,
