@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import 'package:cattleshield/core/constants/app_colors.dart';
 import 'package:cattleshield/core/constants/app_spacing.dart';
@@ -68,10 +69,19 @@ class _VetClaimReviewScreenState extends ConsumerState<VetClaimReviewScreen> {
     final claimAsync = ref.watch(_claimDetailProvider(widget.claimId));
 
     return Scaffold(
+      backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('Claim Review'),
+        title: Text('Claim Review', style: GoogleFonts.manrope(fontWeight: FontWeight.w700)),
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
+        elevation: 0,
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [AppColors.primary, AppColors.primaryLight],
+            ),
+          ),
+        ),
       ),
       body: claimAsync.when(
         loading: () => const LoadingOverlay(

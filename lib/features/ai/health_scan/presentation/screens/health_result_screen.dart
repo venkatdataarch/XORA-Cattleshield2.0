@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import 'package:cattleshield/core/constants/app_colors.dart';
 import 'package:cattleshield/core/constants/app_spacing.dart';
@@ -24,10 +25,17 @@ class HealthResultScreen extends ConsumerWidget {
 
     if (result == null) {
       return Scaffold(
+        backgroundColor: AppColors.background,
         appBar: AppBar(
-          title: const Text('Health Result'),
+          title: Text('Health Result', style: GoogleFonts.manrope(fontWeight: FontWeight.w700)),
           backgroundColor: AppColors.primary,
           foregroundColor: Colors.white,
+          elevation: 0,
+          flexibleSpace: Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(colors: [AppColors.primary, AppColors.primaryLight]),
+            ),
+          ),
         ),
         body: const Center(
           child: Text('No health scan result available'),
@@ -36,10 +44,17 @@ class HealthResultScreen extends ConsumerWidget {
     }
 
     return Scaffold(
+      backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('Health Analysis'),
+        title: Text('Health Analysis', style: GoogleFonts.manrope(fontWeight: FontWeight.w700)),
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
+        elevation: 0,
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(colors: [AppColors.primary, AppColors.primaryLight]),
+          ),
+        ),
       ),
       body: Column(
         children: [

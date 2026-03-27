@@ -14,6 +14,7 @@ from ..models.user import User
 from ..schemas.proposal import (
     ProposalCreateRequest, ProposalUpdateRequest,
     VetDecisionRequest, ProposalResponse,
+    AnimalDetail, FarmerDetail,
 )
 from ..middleware.auth import get_current_user, get_current_vet
 
@@ -99,7 +100,54 @@ async def get_proposal(
     proposal = result.scalar_one_or_none()
     if not proposal:
         raise HTTPException(status_code=404, detail="Proposal not found")
-    return _proposal_response(proposal)
+
+    resp = _proposal_response(proposal)
+
+    # Fetch animal details
+    animal_result = await db.execute(
+        select(Animal).where(Animal.id == proposal.animal_id)
+    )
+    animal = animal_result.scalar_one_or_none()
+    if animal:
+        resp.animal = AnimalDetail(
+            id=str(animal.id),
+            unique_id=animal.unique_id or "",
+            species=animal.species or "",
+            breed=animal.breed or "",
+            sex=animal.sex or "",
+            sex_condition=animal.sex_condition,
+            color=animal.color or "",
+            age_years=animal.age_years,
+            height_cm=animal.height_cm,
+            milk_yield_ltr=animal.milk_yield_ltr,
+            market_value=animal.market_value,
+            distinguishing_marks=animal.distinguishing_marks,
+            identification_tag=animal.identification_tag,
+            health_score=animal.health_score,
+            health_risk_category=animal.health_risk_category,
+            muzzle_images=animal.muzzle_images or [],
+            body_photos=animal.body_photos or [],
+        )
+
+    # Fetch farmer details
+    farmer_result = await db.execute(
+        select(User).where(User.id == proposal.farmer_id)
+    )
+    farmer = farmer_result.scalar_one_or_none()
+    if farmer:
+        resp.farmer = FarmerDetail(
+            id=str(farmer.id),
+            name=farmer.name or "",
+            phone=farmer.phone or "",
+            village=farmer.village,
+            district=farmer.district,
+            state=farmer.state,
+            aadhaar_number=farmer.aadhaar_number,
+            father_or_husband_name=farmer.father_or_husband_name,
+            occupation=farmer.occupation,
+        )
+
+    return resp
 
 
 @router.put("/{proposal_id}", response_model=ProposalResponse)
@@ -169,9 +217,43 @@ async def vet_decision(
     proposal.vet_reviewed_at = datetime.utcnow()
 
     if req.decision == "approved":
+        # Vet approved → goes to UIIC Admin for final approval
         proposal.status = "vet_approved"
+    else:
+        proposal.status = "vet_rejected"
+        proposal.rejection_reason = req.reason
 
-        # Auto-create policy
+    await db.flush()
+    return _proposal_response(proposal)
+
+
+@router.post("/{proposal_id}/admin-decision", response_model=ProposalResponse)
+async def admin_decision(
+    proposal_id: str,
+    req: VetDecisionRequest,
+    db: AsyncSession = Depends(get_db),
+    admin: User = Depends(get_current_user),
+):
+    """UIIC Admin approves or rejects a vet-approved proposal."""
+    if admin.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    result = await db.execute(
+        select(Proposal).where(Proposal.id == proposal_id)
+    )
+    proposal = result.scalar_one_or_none()
+    if not proposal:
+        raise HTTPException(status_code=404, detail="Proposal not found")
+
+    if proposal.status != "vet_approved":
+        raise HTTPException(status_code=400, detail="Proposal must be vet-approved first")
+
+    proposal.uiic_sent_at = datetime.utcnow()
+
+    if req.decision == "approved":
+        proposal.status = "uiic_approved"
+
+        # Now create the policy
         animal_result = await db.execute(
             select(Animal).where(Animal.id == proposal.animal_id)
         )
@@ -199,16 +281,16 @@ async def vet_decision(
             details_json={
                 "coverage_type": "comprehensive",
                 "deductible": 0,
-                "vet_approved_by": str(vet.id),
+                "vet_approved_by": str(proposal.form_data.get("vet_id", "")),
+                "uiic_approved_by": str(admin.id),
             },
         )
         db.add(policy)
 
         proposal.status = "policy_created"
         proposal.uiic_reference = policy_number
-        proposal.uiic_sent_at = datetime.utcnow()
     else:
-        proposal.status = "vet_rejected"
+        proposal.status = "uiic_rejected"
         proposal.rejection_reason = req.reason
 
     await db.flush()

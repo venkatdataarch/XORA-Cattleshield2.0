@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
 import 'package:cattleshield/core/constants/app_colors.dart';
@@ -38,7 +39,6 @@ class _ProposalListScreenState extends ConsumerState<ProposalListScreen>
     _tabController = TabController(length: _tabs.length, vsync: this);
     _tabController.addListener(_onTabChanged);
 
-    // Load proposals on first build.
     Future.microtask(() {
       ref.read(proposalListProvider.notifier).loadProposals();
     });
@@ -67,33 +67,128 @@ class _ProposalListScreenState extends ConsumerState<ProposalListScreen>
     final state = ref.watch(proposalListProvider);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Proposals'),
-        bottom: TabBar(
-          controller: _tabController,
-          isScrollable: true,
-          tabAlignment: TabAlignment.start,
-          labelColor: AppColors.primary,
-          unselectedLabelColor: AppColors.textSecondary,
-          indicatorColor: AppColors.primary,
-          indicatorSize: TabBarIndicatorSize.label,
-          tabs: _tabs.map((t) => Tab(text: t.label)).toList(),
+      body: Container(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [AppColors.background, Colors.white],
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              // Premium header with tabs
+              Container(
+                width: double.infinity,
+                margin: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+                padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 20),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [AppColors.primary, AppColors.primaryLight],
+                  ),
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.primary.withValues(alpha: 0.3),
+                      blurRadius: 20,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(Icons.description, color: Colors.white, size: 24),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Text(
+                            'Proposals',
+                            style: GoogleFonts.manrope(
+                              fontSize: 22,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: TabBar(
+                        controller: _tabController,
+                        isScrollable: true,
+                        tabAlignment: TabAlignment.start,
+                        labelColor: Colors.white,
+                        unselectedLabelColor: Colors.white70,
+                        indicatorColor: Colors.white,
+                        indicatorSize: TabBarIndicatorSize.label,
+                        labelStyle: GoogleFonts.manrope(fontSize: 13, fontWeight: FontWeight.w700),
+                        unselectedLabelStyle: GoogleFonts.manrope(fontSize: 13, fontWeight: FontWeight.w500),
+                        tabs: _tabs.map((t) => Tab(text: t.label)).toList(),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              Expanded(
+                child: state.proposals.when(
+                  loading: () => const Center(
+                    child: CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+                    ),
+                  ),
+                  error: (error, _) => AppErrorWidget(
+                    message: error.toString(),
+                    onRetry: _onRefresh,
+                  ),
+                  data: (_) => _buildList(state),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
-      body: state.proposals.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => AppErrorWidget(
-          message: error.toString(),
-          onRetry: _onRefresh,
+      floatingActionButton: Container(
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [AppColors.primary, AppColors.primaryLight],
+          ),
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.primary.withValues(alpha: 0.3),
+              blurRadius: 12,
+              offset: const Offset(0, 6),
+            ),
+          ],
         ),
-        data: (_) => _buildList(state),
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => context.push('/farmer/animals/select-for-proposal'),
-        backgroundColor: AppColors.primary,
-        foregroundColor: AppColors.textOnPrimary,
-        icon: const Icon(Icons.add),
-        label: const Text('New Proposal'),
+        child: FloatingActionButton.extended(
+          onPressed: () => context.push('/farmer/animals/select-for-proposal'),
+          backgroundColor: Colors.transparent,
+          foregroundColor: Colors.white,
+          elevation: 0,
+          icon: const Icon(Icons.add),
+          label: Text('New Proposal', style: GoogleFonts.manrope(fontWeight: FontWeight.w700)),
+        ),
       ),
     );
   }
@@ -115,9 +210,9 @@ class _ProposalListScreenState extends ConsumerState<ProposalListScreen>
       onRefresh: _onRefresh,
       color: AppColors.primary,
       child: ListView.separated(
-        padding: AppSpacing.screenPadding,
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
         itemCount: proposals.length,
-        separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.sm),
+        separatorBuilder: (_, __) => const SizedBox(height: 10),
         itemBuilder: (context, index) {
           return _ProposalCard(
             proposal: proposals[index],
@@ -147,91 +242,89 @@ class _ProposalCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final dateFormat = DateFormat('dd MMM yyyy');
 
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-        side: const BorderSide(color: AppColors.cardBorder),
-      ),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-        child: Padding(
-          padding: AppSpacing.cardPadding,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Header: Animal name + status badge
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      proposal.animalName ?? 'Animal #${proposal.animalId}',
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textPrimary,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.06),
+              blurRadius: 20,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    proposal.animalName ?? 'Animal #${proposal.animalId}',
+                    style: GoogleFonts.manrope(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
                     ),
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  ProposalStatusBadge(status: proposal.status),
-                ],
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              const Divider(height: 1, color: AppColors.divider),
-              const SizedBox(height: AppSpacing.sm),
-              // Details row
-              Row(
-                children: [
-                  // Date
-                  _InfoChip(
-                    icon: Icons.calendar_today,
-                    label: dateFormat.format(proposal.createdAt),
-                  ),
-                  const Spacer(),
-                  // Sum insured
-                  if (proposal.sumInsured != null)
-                    _InfoChip(
-                      icon: Icons.currency_rupee,
-                      label: NumberFormat.compact().format(proposal.sumInsured),
-                    ),
-                ],
-              ),
-              // Rejection reason
-              if (proposal.status == ProposalStatus.vetRejected &&
-                  proposal.rejectionReason != null) ...[
-                const SizedBox(height: AppSpacing.sm),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(AppSpacing.sm),
-                  decoration: BoxDecoration(
-                    color: AppColors.error.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(AppSpacing.borderRadius),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.info_outline, size: 14, color: AppColors.error),
-                      const SizedBox(width: AppSpacing.xs),
-                      Expanded(
-                        child: Text(
-                          proposal.rejectionReason!,
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: AppColors.error,
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
+                const SizedBox(width: 8),
+                ProposalStatusBadge(status: proposal.status),
               ],
+            ),
+            const SizedBox(height: 10),
+            Divider(height: 1, color: Colors.grey.shade200),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                _InfoChip(
+                  icon: Icons.calendar_today,
+                  label: dateFormat.format(proposal.createdAt),
+                ),
+                const Spacer(),
+                if (proposal.sumInsured != null)
+                  _InfoChip(
+                    icon: Icons.currency_rupee,
+                    label: NumberFormat.compact().format(proposal.sumInsured),
+                  ),
+              ],
+            ),
+            if (proposal.status == ProposalStatus.vetRejected &&
+                proposal.rejectionReason != null) ...[
+              const SizedBox(height: 10),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AppColors.error.withValues(alpha: 0.05),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.info_outline, size: 14, color: AppColors.error),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        proposal.rejectionReason!,
+                        style: GoogleFonts.manrope(
+                          fontSize: 12,
+                          color: AppColors.error,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ],
-          ),
+          ],
         ),
       ),
     );
@@ -249,13 +342,13 @@ class _InfoChip extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 14, color: AppColors.textTertiary),
+        Icon(icon, size: 14, color: Colors.grey.shade400),
         const SizedBox(width: 4),
         Text(
           label,
-          style: const TextStyle(
+          style: GoogleFonts.manrope(
             fontSize: 13,
-            color: AppColors.textSecondary,
+            color: Colors.grey.shade600,
           ),
         ),
       ],

@@ -103,6 +103,49 @@ class AuthNotifier extends StateNotifier<AuthState> {
     );
   }
 
+  /// Registers a new field agent.
+  Future<bool> registerAgent({
+    required String name,
+    required String phone,
+    String? email,
+    required String agentId,
+    required String password,
+    required String address,
+    required String village,
+    required String district,
+    required String state,
+    String? aadhaarNumber,
+  }) async {
+    this.state = const AuthState.loading();
+
+    final data = {
+      'name': name,
+      'phone': phone,
+      'email': email,
+      'role': 'agent',
+      'address': address,
+      'village': village,
+      'district': district,
+      'state': state,
+      'aadhaar_number': aadhaarNumber,
+      'agent_id': agentId,
+      'password': password,
+    };
+
+    final result = await _repository.registerFarmer(data);
+
+    return result.when(
+      success: (user) {
+        this.state = const AuthState.unauthenticated();
+        return true;
+      },
+      failure: (error) {
+        this.state = AuthState.error(error.message);
+        return false;
+      },
+    );
+  }
+
   /// Signs out the current user and clears all stored credentials.
   Future<void> logout() async {
     await _repository.logout();

@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import get_db
 from ..models.animal import Animal
+from ..models.proposal import Proposal
 from ..models.user import User
 from ..schemas.animal import AnimalCreateRequest, AnimalUpdateRequest, AnimalResponse
 from ..middleware.auth import get_current_user
@@ -90,6 +91,33 @@ async def register_animal(
     )
     db.add(animal)
     await db.flush()
+
+    # Auto-create proposal for vet review
+    sum_insured = req.sum_insured or req.market_value or 50000.0
+    premium = round(sum_insured * 0.04, 2)
+    proposal = Proposal(
+        animal_id=animal.id,
+        farmer_id=user.id,
+        status="submitted",
+        form_data={
+            "animal_type": req.species,
+            "breed": req.breed,
+            "age": req.age_years,
+            "sex": req.sex,
+            "color": req.color,
+            "distinguishing_marks": req.distinguishing_marks,
+            "milk_yield": req.milk_yield_ltr,
+            "market_value": req.market_value,
+            "identification_tag": req.identification_tag,
+        },
+        sum_insured=sum_insured,
+        premium=premium,
+        animal_name=f"{req.breed or req.species} - {animal.unique_id}",
+        animal_species=req.species,
+    )
+    db.add(proposal)
+    await db.flush()
+
     return _animal_response(animal)
 
 

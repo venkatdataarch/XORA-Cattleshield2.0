@@ -18,6 +18,44 @@ class VetDecisionRequest(BaseModel):
     reason: str | None = None
 
 
+class AnimalDetail(BaseModel):
+    id: str = ""
+    unique_id: str = ""
+    species: str = ""
+    breed: str = ""
+    sex: str = ""
+    sex_condition: str | None = None
+    color: str = ""
+    age_years: float | None = None
+    height_cm: float | None = None
+    milk_yield_ltr: float | None = None
+    market_value: float | None = None
+    distinguishing_marks: str | None = None
+    identification_tag: str | None = None
+    health_score: int | None = None
+    health_risk_category: str | None = None
+    muzzle_images: list[Any] = []
+    body_photos: list[Any] = []
+
+    class Config:
+        from_attributes = True
+
+
+class FarmerDetail(BaseModel):
+    id: str = ""
+    name: str = ""
+    phone: str = ""
+    village: str | None = None
+    district: str | None = None
+    state: str | None = None
+    aadhaar_number: str | None = None
+    father_or_husband_name: str | None = None
+    occupation: str | None = None
+
+    class Config:
+        from_attributes = True
+
+
 class ProposalResponse(BaseModel):
     id: str
     animal_id: str
@@ -35,6 +73,8 @@ class ProposalResponse(BaseModel):
     vet_reviewed_at: str | None = None
     uiic_sent_at: str | None = None
     created_at: str | None = None
+    animal: AnimalDetail | None = None
+    farmer: FarmerDetail | None = None
 
     class Config:
         from_attributes = True

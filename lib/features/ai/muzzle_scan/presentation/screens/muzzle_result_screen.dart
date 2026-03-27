@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import 'package:cattleshield/core/constants/app_colors.dart';
 import 'package:cattleshield/core/constants/app_spacing.dart';
@@ -52,9 +53,17 @@ class _MuzzleResultScreenState extends ConsumerState<MuzzleResultScreen>
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('Scan Result'),
+        title: Text('Scan Result', style: GoogleFonts.manrope(fontWeight: FontWeight.w700)),
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
+        elevation: 0,
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [AppColors.primary, AppColors.primaryLight],
+            ),
+          ),
+        ),
       ),
       body: Padding(
         padding: AppSpacing.screenPadding,

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../features/auth/presentation/providers/auth_provider.dart';
+import '../../features/auth/presentation/screens/agent_registration_screen.dart';
 import '../../features/auth/presentation/screens/farmer_registration_screen.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/auth/presentation/screens/otp_verification_screen.dart';
@@ -30,6 +31,8 @@ import '../../features/admin/presentation/screens/fraud_alerts_screen.dart';
 
 // Photo capture
 import '../../features/ai/photo_capture/presentation/screens/guided_photo_capture_screen.dart';
+// Muzzle identify
+import '../../features/ai/muzzle_scan/presentation/screens/standalone_identify_screen.dart';
 
 // Profile
 import '../../features/farmer/profile/presentation/screens/profile_screen.dart';
@@ -108,6 +111,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           final phone = state.uri.queryParameters['phone'] ?? '';
           return FarmerRegistrationScreen(phone: phone);
         },
+      ),
+      GoRoute(
+        path: '/register/agent',
+        name: 'agent-registration',
+        builder: (context, state) => const AgentRegistrationScreen(),
       ),
 
       // -------------------------------------------------------------------
@@ -376,6 +384,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       // Scan routes (accessible to all authenticated roles)
       // -------------------------------------------------------------------
       GoRoute(
+        path: '/scan/muzzle-identify',
+        builder: (context, state) => const StandaloneIdentifyScreen(),
+      ),
+      GoRoute(
         path: '/scan/muzzle/:animalId',
         name: RouteNames.muzzleCapture,
         builder: (context, state) => _Placeholder(
@@ -461,35 +473,17 @@ class _FarmerScaffold extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       body: navigationShell,
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: navigationShell.currentIndex,
-        onDestinationSelected: (index) {
-          navigationShell.goBranch(
-            index,
-            initialLocation: index == navigationShell.currentIndex,
-          );
-        },
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.home_outlined),
-            selectedIcon: Icon(Icons.home),
-            label: 'Home',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.pets_outlined),
-            selectedIcon: Icon(Icons.pets),
-            label: 'Animals',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.policy_outlined),
-            selectedIcon: Icon(Icons.policy),
-            label: 'Policies',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.person_outline),
-            selectedIcon: Icon(Icons.person),
-            label: 'Profile',
-          ),
+      bottomNavigationBar: _CattleShieldNavBar(
+        currentIndex: navigationShell.currentIndex,
+        onTap: (index) => navigationShell.goBranch(
+          index,
+          initialLocation: index == navigationShell.currentIndex,
+        ),
+        items: const [
+          _NavItem(icon: Icons.home_outlined, activeIcon: Icons.home, label: 'Home'),
+          _NavItem(icon: Icons.pets_outlined, activeIcon: Icons.pets, label: 'Animals'),
+          _NavItem(icon: Icons.policy_outlined, activeIcon: Icons.policy, label: 'Policies'),
+          _NavItem(icon: Icons.person_outline, activeIcon: Icons.person, label: 'Profile'),
         ],
       ),
     );
@@ -509,35 +503,17 @@ class _VetScaffold extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       body: navigationShell,
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: navigationShell.currentIndex,
-        onDestinationSelected: (index) {
-          navigationShell.goBranch(
-            index,
-            initialLocation: index == navigationShell.currentIndex,
-          );
-        },
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.dashboard_outlined),
-            selectedIcon: Icon(Icons.dashboard),
-            label: 'Dashboard',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.rate_review_outlined),
-            selectedIcon: Icon(Icons.rate_review),
-            label: 'Reviews',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.description_outlined),
-            selectedIcon: Icon(Icons.description),
-            label: 'Certificates',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.person_outline),
-            selectedIcon: Icon(Icons.person),
-            label: 'Profile',
-          ),
+      bottomNavigationBar: _CattleShieldNavBar(
+        currentIndex: navigationShell.currentIndex,
+        onTap: (index) => navigationShell.goBranch(
+          index,
+          initialLocation: index == navigationShell.currentIndex,
+        ),
+        items: const [
+          _NavItem(icon: Icons.dashboard_outlined, activeIcon: Icons.dashboard, label: 'Dashboard'),
+          _NavItem(icon: Icons.rate_review_outlined, activeIcon: Icons.rate_review, label: 'Reviews'),
+          _NavItem(icon: Icons.description_outlined, activeIcon: Icons.description, label: 'Certificates'),
+          _NavItem(icon: Icons.person_outline, activeIcon: Icons.person, label: 'Profile'),
         ],
       ),
     );
@@ -557,36 +533,118 @@ class _AdminScaffold extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       body: navigationShell,
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: navigationShell.currentIndex,
-        onDestinationSelected: (index) {
-          navigationShell.goBranch(
-            index,
-            initialLocation: index == navigationShell.currentIndex,
-          );
-        },
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.dashboard_outlined),
-            selectedIcon: Icon(Icons.dashboard),
-            label: 'Dashboard',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.history_outlined),
-            selectedIcon: Icon(Icons.history),
-            label: 'Audit Trail',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.warning_amber_outlined),
-            selectedIcon: Icon(Icons.warning_amber),
-            label: 'Fraud Alerts',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.person_outline),
-            selectedIcon: Icon(Icons.person),
-            label: 'Profile',
-          ),
+      bottomNavigationBar: _CattleShieldNavBar(
+        currentIndex: navigationShell.currentIndex,
+        onTap: (index) => navigationShell.goBranch(
+          index,
+          initialLocation: index == navigationShell.currentIndex,
+        ),
+        items: const [
+          _NavItem(icon: Icons.dashboard_outlined, activeIcon: Icons.dashboard, label: 'Dashboard'),
+          _NavItem(icon: Icons.history_outlined, activeIcon: Icons.history, label: 'Audit Trail'),
+          _NavItem(icon: Icons.warning_amber_outlined, activeIcon: Icons.warning_amber, label: 'Fraud Alerts'),
+          _NavItem(icon: Icons.person_outline, activeIcon: Icons.person, label: 'Profile'),
         ],
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// CattleShield branded bottom navigation bar
+// ---------------------------------------------------------------------------
+
+class _NavItem {
+  final IconData icon;
+  final IconData activeIcon;
+  final String label;
+
+  const _NavItem({
+    required this.icon,
+    required this.activeIcon,
+    required this.label,
+  });
+}
+
+class _CattleShieldNavBar extends StatelessWidget {
+  final int currentIndex;
+  final ValueChanged<int> onTap;
+  final List<_NavItem> items;
+
+  const _CattleShieldNavBar({
+    required this.currentIndex,
+    required this.onTap,
+    required this.items,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: AppColors.primary,
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(20),
+          topRight: Radius.circular(20),
+        ),
+      ),
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: items.asMap().entries.map((entry) {
+              final index = entry.key;
+              final item = entry.value;
+              final isActive = index == currentIndex;
+
+              return Expanded(
+                child: GestureDetector(
+                  onTap: () => onTap(index),
+                  behavior: HitTestBehavior.opaque,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 250),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: isActive
+                              ? Colors.white.withValues(alpha: 0.15)
+                              : Colors.transparent,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Icon(
+                          isActive ? item.activeIcon : item.icon,
+                          color: isActive
+                              ? Colors.white
+                              : Colors.white.withValues(alpha: 0.5),
+                          size: 24,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        item.label,
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight:
+                              isActive ? FontWeight.w600 : FontWeight.w400,
+                          color: isActive
+                              ? Colors.white
+                              : Colors.white.withValues(alpha: 0.5),
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ),
       ),
     );
   }

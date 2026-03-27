@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import 'package:cattleshield/core/constants/app_colors.dart';
 import 'package:cattleshield/shared/widgets/app_error_widget.dart';
@@ -177,31 +178,98 @@ class _ProposalFormScreenState extends ConsumerState<ProposalFormScreen> {
         : null;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          widget.proposalId != null ? 'Edit Proposal' : 'New Proposal',
-        ),
-      ),
-      body: LoadingOverlay(
-        isLoading: _isSubmitting || _isSavingDraft,
-        message: _isSubmitting ? 'Submitting proposal...' : 'Saving draft...',
-        child: schemaAsync.when(
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (error, _) => AppErrorWidget(
-            message: 'Failed to load form: $error',
-            onRetry: () => ref.invalidate(_proposalFormSchemaProvider(widget.animalId)),
+      body: Container(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [AppColors.background, Colors.white],
           ),
-          data: (schema) {
-            final initialData = _buildInitialData(animal, existingProposal);
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              // Premium header
+              Container(
+                width: double.infinity,
+                margin: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+                padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [AppColors.primary, AppColors.primaryLight],
+                  ),
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.primary.withValues(alpha: 0.3),
+                      blurRadius: 20,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    GestureDetector(
+                      onTap: () => Navigator.of(context).pop(),
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(Icons.arrow_back, color: Colors.white, size: 20),
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Text(
+                        widget.proposalId != null ? 'Edit Proposal' : 'New Proposal',
+                        style: GoogleFonts.manrope(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
 
-            return DynamicFormRenderer(
-              schema: schema,
-              initialData: initialData,
-              displayMode: FormDisplayMode.multiPage,
-              onSubmit: _handleSubmit,
-              onSaveDraft: _handleSaveDraft,
-            );
-          },
+              Expanded(
+                child: LoadingOverlay(
+                  isLoading: _isSubmitting || _isSavingDraft,
+                  message: _isSubmitting ? 'Submitting proposal...' : 'Saving draft...',
+                  child: schemaAsync.when(
+                    loading: () => const Center(
+                      child: CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+                      ),
+                    ),
+                    error: (error, _) => AppErrorWidget(
+                      message: 'Failed to load form: $error',
+                      onRetry: () => ref.invalidate(_proposalFormSchemaProvider(widget.animalId)),
+                    ),
+                    data: (schema) {
+                      final initialData = _buildInitialData(animal, existingProposal);
+
+                      return DynamicFormRenderer(
+                        schema: schema,
+                        initialData: initialData,
+                        displayMode: FormDisplayMode.multiPage,
+                        onSubmit: _handleSubmit,
+                        onSaveDraft: _handleSaveDraft,
+                      );
+                    },
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

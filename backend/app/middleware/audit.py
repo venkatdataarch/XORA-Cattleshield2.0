@@ -63,7 +63,7 @@ class AuditMiddleware(BaseHTTPMiddleware):
             async with async_session() as session:
                 log_entry = AuditLog(
                     id=str(uuid.uuid4()),
-                    timestamp=datetime.now(timezone.utc),
+                    timestamp=datetime.now(timezone(timedelta(hours=5, minutes=30))),  # IST
                     user_id=user_id,
                     user_role=user_role,
                     ip_address=ip_address,

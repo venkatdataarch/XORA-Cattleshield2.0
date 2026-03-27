@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 
 import 'package:cattleshield/core/constants/app_colors.dart';
@@ -239,41 +240,104 @@ class _ClaimEvidenceUploadScreenState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Upload Evidence'),
-      ),
-      body: LoadingOverlay(
+      body: Container(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [AppColors.background, Colors.white],
+          ),
+        ),
+        child: SafeArea(
+          child: LoadingOverlay(
         isLoading: _isUploading,
         message: 'Uploading evidence...',
         child: Column(
           children: [
-            // Instructions
+            // Premium header
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(AppSpacing.md),
-              color: AppColors.info.withValues(alpha: 0.08),
+              margin: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+              padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [AppColors.primary, AppColors.primaryLight],
+                ),
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.primary.withValues(alpha: 0.3),
+                    blurRadius: 20,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+              ),
               child: Row(
                 children: [
-                  const Icon(Icons.info_outline, size: 18, color: AppColors.info),
-                  const SizedBox(width: AppSpacing.sm),
+                  GestureDetector(
+                    onTap: () => Navigator.of(context).pop(),
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(Icons.arrow_back, color: Colors.white, size: 20),
+                    ),
+                  ),
+                  const SizedBox(width: 14),
                   Expanded(
                     child: Text(
-                      'Upload photos, videos, and documents as evidence. '
-                      'Muzzle photo is required for verification.',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: AppColors.textSecondary,
+                      'Upload Evidence',
+                      style: GoogleFonts.manrope(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
                       ),
                     ),
                   ),
                 ],
               ),
             ),
+            const SizedBox(height: 12),
+
+            // Instructions
+            Container(
+              width: double.infinity,
+              margin: const EdgeInsets.symmetric(horizontal: 20),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppColors.info.withValues(alpha: 0.05),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: AppColors.info.withValues(alpha: 0.2)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.info_outline, size: 18, color: AppColors.info),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Upload photos, videos, and documents as evidence. '
+                      'Muzzle photo is required for verification.',
+                      style: GoogleFonts.manrope(
+                        fontSize: 13,
+                        color: AppColors.info,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
 
             // Upload slots grid
             Expanded(
               child: GridView.builder(
-                padding: AppSpacing.screenPadding,
+                padding: const EdgeInsets.symmetric(horizontal: 20),
                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 2,
                   crossAxisSpacing: 12,
@@ -293,10 +357,16 @@ class _ClaimEvidenceUploadScreenState
 
             // Submit button
             Container(
-              padding: const EdgeInsets.all(AppSpacing.md),
-              decoration: const BoxDecoration(
-                color: AppColors.surface,
-                border: Border(top: BorderSide(color: AppColors.divider)),
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.06),
+                    blurRadius: 20,
+                    offset: const Offset(0, -8),
+                  ),
+                ],
               ),
               child: SafeArea(
                 top: false,
@@ -304,23 +374,53 @@ class _ClaimEvidenceUploadScreenState
                   children: [
                     Text(
                       '$_filledSlots of ${_slots.length} slots filled',
-                      style: const TextStyle(
+                      style: GoogleFonts.manrope(
                         fontSize: 13,
-                        color: AppColors.textSecondary,
+                        color: Colors.grey.shade500,
                       ),
                     ),
-                    const SizedBox(height: AppSpacing.sm),
-                    PrimaryButton(
-                      label: 'Upload Evidence',
-                      icon: Icons.cloud_upload,
-                      onPressed: _hasRequiredPhotos ? _uploadEvidence : null,
-                      isDisabled: !_hasRequiredPhotos,
+                    const SizedBox(height: 10),
+                    Container(
+                      height: 54,
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: _hasRequiredPhotos
+                              ? [AppColors.primary, AppColors.primaryLight]
+                              : [Colors.grey.shade300, Colors.grey.shade400],
+                        ),
+                        borderRadius: BorderRadius.circular(14),
+                        boxShadow: _hasRequiredPhotos
+                            ? [
+                                BoxShadow(
+                                  color: AppColors.primary.withValues(alpha: 0.3),
+                                  blurRadius: 12,
+                                  offset: const Offset(0, 6),
+                                ),
+                              ]
+                            : [],
+                      ),
+                      child: ElevatedButton.icon(
+                        onPressed: _hasRequiredPhotos ? _uploadEvidence : null,
+                        icon: const Icon(Icons.cloud_upload, color: Colors.white, size: 20),
+                        label: Text(
+                          'Upload Evidence',
+                          style: GoogleFonts.manrope(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.transparent,
+                          shadowColor: Colors.transparent,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        ),
+                      ),
                     ),
                   ],
                 ),
               ),
             ),
           ],
+        ),
+      ),
         ),
       ),
     );

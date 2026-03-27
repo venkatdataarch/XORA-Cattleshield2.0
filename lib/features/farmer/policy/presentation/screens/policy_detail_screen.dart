@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
 import 'package:cattleshield/core/constants/app_colors.dart';
@@ -38,16 +39,86 @@ class PolicyDetailScreen extends ConsumerWidget {
     final policyAsync = ref.watch(_policyDetailProvider(policyId));
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Policy Details'),
-      ),
-      body: policyAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => AppErrorWidget(
-          message: error.toString(),
-          onRetry: () => ref.invalidate(_policyDetailProvider(policyId)),
+      body: Container(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [AppColors.background, Colors.white],
+          ),
         ),
-        data: (policy) => _PolicyDetailContent(policy: policy),
+        child: SafeArea(
+          child: Column(
+            children: [
+              // Premium header
+              Container(
+                width: double.infinity,
+                margin: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+                padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [AppColors.primary, AppColors.primaryLight],
+                  ),
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.primary.withValues(alpha: 0.3),
+                      blurRadius: 20,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    GestureDetector(
+                      onTap: () => Navigator.of(context).pop(),
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(Icons.arrow_back, color: Colors.white, size: 20),
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Text(
+                        'Policy Details',
+                        style: GoogleFonts.manrope(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              // Content
+              Expanded(
+                child: policyAsync.when(
+                  loading: () => const Center(
+                    child: CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+                    ),
+                  ),
+                  error: (error, _) => AppErrorWidget(
+                    message: error.toString(),
+                    onRetry: () => ref.invalidate(_policyDetailProvider(policyId)),
+                  ),
+                  data: (policy) => _PolicyDetailContent(policy: policy),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -68,312 +139,333 @@ class _PolicyDetailContent extends ConsumerWidget {
     );
 
     return SingleChildScrollView(
-      padding: AppSpacing.screenPadding,
+      padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Policy header card with big policy number
+          // Policy header card
           _buildHeaderCard(context, dateFormat),
-          const SizedBox(height: AppSpacing.md),
+          const SizedBox(height: 16),
 
           // Status + days remaining
           _buildStatusCard(),
-          const SizedBox(height: AppSpacing.md),
+          const SizedBox(height: 16),
 
           // Animal info section
           _buildAnimalInfoCard(),
-          const SizedBox(height: AppSpacing.md),
+          const SizedBox(height: 16),
 
           // Coverage details
           _buildCoverageCard(currencyFormat, dateFormat),
-          const SizedBox(height: AppSpacing.md),
+          const SizedBox(height: 16),
 
           // Linked proposal
           _buildProposalLink(context),
-          const SizedBox(height: AppSpacing.md),
+          const SizedBox(height: 16),
 
           // Action buttons
           _buildActions(context, ref),
-          const SizedBox(height: AppSpacing.lg),
+          const SizedBox(height: 32),
         ],
       ),
     );
   }
 
   Widget _buildHeaderCard(BuildContext context, DateFormat dateFormat) {
-    return Card(
-      elevation: 0,
-      color: AppColors.primary.withValues(alpha: 0.05),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-        side: BorderSide(color: AppColors.primary.withValues(alpha: 0.2)),
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          children: [
-            // Policy number
-            const Text(
-              'Policy Number',
-              style: TextStyle(
-                fontSize: 12,
-                color: AppColors.textSecondary,
-                letterSpacing: 1,
-              ),
+      child: Column(
+        children: [
+          Text(
+            'Policy Number',
+            style: GoogleFonts.manrope(
+              fontSize: 12,
+              color: Colors.grey.shade500,
+              letterSpacing: 1,
             ),
-            const SizedBox(height: 4),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            policy.policyNumber,
+            style: GoogleFonts.manrope(
+              fontSize: 24,
+              fontWeight: FontWeight.w800,
+              color: AppColors.primary,
+              letterSpacing: 1.5,
+            ),
+          ),
+          const SizedBox(height: 8),
+          if (policy.insuredName != null)
             Text(
-              policy.policyNumber,
-              style: const TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.w700,
-                fontFamily: 'monospace',
-                color: AppColors.primary,
-                letterSpacing: 1.5,
+              policy.insuredName!,
+              style: GoogleFonts.manrope(
+                fontSize: 14,
+                color: Colors.grey.shade600,
               ),
             ),
-            const SizedBox(height: AppSpacing.sm),
-            // Insured name
-            if (policy.insuredName != null)
-              Text(
-                policy.insuredName!,
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-          ],
-        ),
+        ],
       ),
     );
   }
 
   Widget _buildStatusCard() {
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-        side: BorderSide(color: policy.statusColor.withValues(alpha: 0.3)),
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: policy.statusColor.withValues(alpha: 0.3)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
       ),
-      child: Padding(
-        padding: AppSpacing.cardPadding,
-        child: Row(
-          children: [
-            // Status icon
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: policy.statusColor.withValues(alpha: 0.1),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                policy.status.icon,
-                color: policy.statusColor,
-                size: 28,
-              ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: policy.statusColor.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(14),
             ),
-            const SizedBox(width: AppSpacing.md),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  StatusBadge(
-                    label: policy.statusLabel,
+            child: Icon(
+              policy.status.icon,
+              color: policy.statusColor,
+              size: 28,
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                StatusBadge(
+                  label: policy.statusLabel,
+                  color: policy.statusColor,
+                  icon: policy.status.icon,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  policy.isExpired
+                      ? 'This policy has expired'
+                      : policy.isExpiringSoon
+                          ? '${policy.daysRemaining} days until expiry'
+                          : '${policy.daysRemaining} days remaining',
+                  style: GoogleFonts.manrope(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
                     color: policy.statusColor,
-                    icon: policy.status.icon,
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    policy.isExpired
-                        ? 'This policy has expired'
-                        : policy.isExpiringSoon
-                            ? '${policy.daysRemaining} days until expiry'
-                            : '${policy.daysRemaining} days remaining',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                      color: policy.statusColor,
-                    ),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildAnimalInfoCard() {
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-        side: const BorderSide(color: AppColors.cardBorder),
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
       ),
-      child: Padding(
-        padding: AppSpacing.cardPadding,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Insured Animal',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-                color: AppColors.primary,
-              ),
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            const Divider(height: 1, color: AppColors.divider),
-            const SizedBox(height: AppSpacing.sm),
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-                  ),
-                  child: const Icon(Icons.pets, color: AppColors.primary, size: 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.secondary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(10),
                 ),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
+                child: const Icon(Icons.pets, color: AppColors.secondary, size: 20),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                'Insured Animal',
+                style: GoogleFonts.manrope(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Divider(height: 1, color: Colors.grey.shade200),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.pets, color: AppColors.primary, size: 24),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      policy.animalName ?? 'Animal #${policy.animalId}',
+                      style: GoogleFonts.manrope(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    if (policy.animalSpecies != null)
                       Text(
-                        policy.animalName ?? 'Animal #${policy.animalId}',
-                        style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textPrimary,
+                        policy.animalSpecies!,
+                        style: GoogleFonts.manrope(
+                          fontSize: 13,
+                          color: Colors.grey.shade500,
                         ),
                       ),
-                      if (policy.animalSpecies != null)
-                        Text(
-                          policy.animalSpecies!,
-                          style: const TextStyle(
-                            fontSize: 13,
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                    ],
-                  ),
+                  ],
                 ),
-              ],
-            ),
-          ],
-        ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildCoverageCard(NumberFormat currencyFormat, DateFormat dateFormat) {
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-        side: const BorderSide(color: AppColors.cardBorder),
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
       ),
-      child: Padding(
-        padding: AppSpacing.cardPadding,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Coverage Details',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-                color: AppColors.primary,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.secondary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.shield, color: AppColors.secondary, size: 20),
               ),
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            const Divider(height: 1, color: AppColors.divider),
-            const SizedBox(height: AppSpacing.sm),
-            _DetailRow(
-              label: 'Sum Insured',
-              value: currencyFormat.format(policy.sumInsured),
-              icon: Icons.shield,
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            _DetailRow(
-              label: 'Premium Paid',
-              value: currencyFormat.format(policy.premium),
-              icon: Icons.payment,
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            _DetailRow(
-              label: 'Policy Start',
-              value: dateFormat.format(policy.startDate),
-              icon: Icons.event,
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            _DetailRow(
-              label: 'Policy End',
-              value: dateFormat.format(policy.endDate),
-              icon: Icons.event_busy,
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            _DetailRow(
-              label: 'Coverage Period',
-              value: '${policy.endDate.difference(policy.startDate).inDays} days',
-              icon: Icons.date_range,
-            ),
-          ],
-        ),
+              const SizedBox(width: 12),
+              Text(
+                'Coverage Details',
+                style: GoogleFonts.manrope(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Divider(height: 1, color: Colors.grey.shade200),
+          const SizedBox(height: 14),
+          _DetailRow(label: 'Sum Insured', value: currencyFormat.format(policy.sumInsured), icon: Icons.shield),
+          const SizedBox(height: 10),
+          _DetailRow(label: 'Premium Paid', value: currencyFormat.format(policy.premium), icon: Icons.payment),
+          const SizedBox(height: 10),
+          _DetailRow(label: 'Policy Start', value: dateFormat.format(policy.startDate), icon: Icons.event),
+          const SizedBox(height: 10),
+          _DetailRow(label: 'Policy End', value: dateFormat.format(policy.endDate), icon: Icons.event_busy),
+          const SizedBox(height: 10),
+          _DetailRow(label: 'Coverage Period', value: '${policy.endDate.difference(policy.startDate).inDays} days', icon: Icons.date_range),
+        ],
       ),
     );
   }
 
   Widget _buildProposalLink(BuildContext context) {
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-        side: const BorderSide(color: AppColors.cardBorder),
-      ),
-      child: InkWell(
-        onTap: () {
-          context.push('/farmer/proposals/${policy.proposalId}');
-        },
-        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-        child: Padding(
-          padding: AppSpacing.cardPadding,
-          child: Row(
-            children: [
-              Icon(
-                Icons.description,
-                color: AppColors.primary.withValues(alpha: 0.7),
-                size: 20,
+    return GestureDetector(
+      onTap: () {
+        context.push('/farmer/proposals/${policy.proposalId}');
+      },
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.06),
+              blurRadius: 20,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(10),
               ),
-              const SizedBox(width: AppSpacing.sm),
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Linked Proposal',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: AppColors.textTertiary,
-                      ),
+              child: const Icon(Icons.description, color: AppColors.primary, size: 20),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Linked Proposal',
+                    style: GoogleFonts.manrope(fontSize: 12, color: Colors.grey.shade500),
+                  ),
+                  Text(
+                    'View the original proposal',
+                    style: GoogleFonts.manrope(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.primary,
                     ),
-                    Text(
-                      'View the original proposal',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                        color: AppColors.primary,
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-              const Icon(Icons.chevron_right, color: AppColors.primary),
-            ],
-          ),
+            ),
+            const Icon(Icons.chevron_right, color: AppColors.primary),
+          ],
         ),
       ),
     );
@@ -383,34 +475,52 @@ class _PolicyDetailContent extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // File Claim button (only for active / expiring policies)
         if (policy.isClaimable)
-          PrimaryButton(
-            label: 'File a Claim',
-            icon: Icons.receipt_long,
-            onPressed: () {
-              ref.read(selectedPolicyProvider.notifier).state = policy;
-              context.push('/farmer/claims/new/${policy.id}');
-            },
+          Container(
+            height: 54,
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [AppColors.primary, AppColors.primaryLight],
+              ),
+              borderRadius: BorderRadius.circular(14),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.primary.withValues(alpha: 0.3),
+                  blurRadius: 12,
+                  offset: const Offset(0, 6),
+                ),
+              ],
+            ),
+            child: ElevatedButton.icon(
+              onPressed: () {
+                ref.read(selectedPolicyProvider.notifier).state = policy;
+                context.push('/farmer/claims/new/${policy.id}');
+              },
+              icon: const Icon(Icons.receipt_long, color: Colors.white, size: 20),
+              label: Text(
+                'File a Claim',
+                style: GoogleFonts.manrope(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.transparent,
+                shadowColor: Colors.transparent,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              ),
+            ),
           ),
 
-        // Renew button (for expiring or expired policies)
         if (policy.isExpiringSoon || policy.isExpired) ...[
-          const SizedBox(height: AppSpacing.sm),
+          const SizedBox(height: 10),
           SecondaryButton(
             label: 'Renew Policy',
             icon: Icons.refresh,
             onPressed: () {
-              // Navigate to proposal form for renewal.
-              context.push(
-                '/farmer/proposals/form/${policy.animalId}',
-              );
+              context.push('/farmer/proposals/form/${policy.animalId}');
             },
           ),
         ],
 
-        // Download certificate (always available)
-        const SizedBox(height: AppSpacing.sm),
+        const SizedBox(height: 10),
         SecondaryButton(
           label: 'Download Certificate',
           icon: Icons.download,
@@ -444,20 +554,20 @@ class _DetailRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Icon(icon, size: 16, color: AppColors.textTertiary),
-        const SizedBox(width: AppSpacing.sm),
+        Icon(icon, size: 16, color: Colors.grey.shade400),
+        const SizedBox(width: 10),
         Expanded(
           child: Text(
             label,
-            style: const TextStyle(
+            style: GoogleFonts.manrope(
               fontSize: 13,
-              color: AppColors.textSecondary,
+              color: Colors.grey.shade500,
             ),
           ),
         ),
         Text(
           value,
-          style: const TextStyle(
+          style: GoogleFonts.manrope(
             fontSize: 14,
             fontWeight: FontWeight.w600,
             color: AppColors.textPrimary,

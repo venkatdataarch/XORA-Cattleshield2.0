@@ -83,6 +83,126 @@ enum ProposalStatus {
 }
 
 /// Represents an insurance proposal for an animal.
+/// Animal details included in proposal response for vet review.
+class ProposalAnimalDetail {
+  final String id;
+  final String uniqueId;
+  final String species;
+  final String breed;
+  final String sex;
+  final String? sexCondition;
+  final String color;
+  final double? ageYears;
+  final double? heightCm;
+  final double? milkYieldLtr;
+  final double? marketValue;
+  final String? distinguishingMarks;
+  final String? identificationTag;
+  final int? healthScore;
+  final String? healthRiskCategory;
+  final List<String> muzzleImages;
+  final List<String> bodyPhotos;
+
+  const ProposalAnimalDetail({
+    this.id = '',
+    this.uniqueId = '',
+    this.species = '',
+    this.breed = '',
+    this.sex = '',
+    this.sexCondition,
+    this.color = '',
+    this.ageYears,
+    this.heightCm,
+    this.milkYieldLtr,
+    this.marketValue,
+    this.distinguishingMarks,
+    this.identificationTag,
+    this.healthScore,
+    this.healthRiskCategory,
+    this.muzzleImages = const [],
+    this.bodyPhotos = const [],
+  });
+
+  factory ProposalAnimalDetail.fromJson(Map<String, dynamic> json) {
+    return ProposalAnimalDetail(
+      id: json['id']?.toString() ?? '',
+      uniqueId: json['unique_id']?.toString() ?? '',
+      species: json['species']?.toString() ?? '',
+      breed: json['breed']?.toString() ?? '',
+      sex: json['sex']?.toString() ?? '',
+      sexCondition: json['sex_condition']?.toString(),
+      color: json['color']?.toString() ?? '',
+      ageYears: _parseDoubleStatic(json['age_years']),
+      heightCm: _parseDoubleStatic(json['height_cm']),
+      milkYieldLtr: _parseDoubleStatic(json['milk_yield_ltr']),
+      marketValue: _parseDoubleStatic(json['market_value']),
+      distinguishingMarks: json['distinguishing_marks']?.toString(),
+      identificationTag: json['identification_tag']?.toString(),
+      healthScore: json['health_score'] is int ? json['health_score'] as int : null,
+      healthRiskCategory: json['health_risk_category']?.toString(),
+      muzzleImages: _parseImageList(json['muzzle_images']),
+      bodyPhotos: _parseImageList(json['body_photos']),
+    );
+  }
+
+  /// Parses image list — handles both string paths and object maps with 'path' key.
+  static List<String> _parseImageList(dynamic value) {
+    if (value == null) return [];
+    if (value is! List) return [];
+    return (value as List<dynamic>).map((e) {
+      if (e is String) return e;
+      if (e is Map) return e['path']?.toString() ?? e['url']?.toString() ?? '';
+      return e.toString();
+    }).where((s) => s.isNotEmpty).toList();
+  }
+
+  static double? _parseDoubleStatic(dynamic value) {
+    if (value == null) return null;
+    if (value is double) return value;
+    if (value is int) return value.toDouble();
+    return double.tryParse(value.toString());
+  }
+}
+
+/// Farmer details included in proposal response for vet review.
+class ProposalFarmerDetail {
+  final String id;
+  final String name;
+  final String phone;
+  final String? village;
+  final String? district;
+  final String? state;
+  final String? aadhaarNumber;
+  final String? fatherOrHusbandName;
+  final String? occupation;
+
+  const ProposalFarmerDetail({
+    this.id = '',
+    this.name = '',
+    this.phone = '',
+    this.village,
+    this.district,
+    this.state,
+    this.aadhaarNumber,
+    this.fatherOrHusbandName,
+    this.occupation,
+  });
+
+  factory ProposalFarmerDetail.fromJson(Map<String, dynamic> json) {
+    return ProposalFarmerDetail(
+      id: json['id']?.toString() ?? '',
+      name: json['name']?.toString() ?? '',
+      phone: json['phone']?.toString() ?? '',
+      village: json['village']?.toString(),
+      district: json['district']?.toString(),
+      state: json['state']?.toString(),
+      aadhaarNumber: json['aadhaar_number']?.toString(),
+      fatherOrHusbandName: json['father_or_husband_name']?.toString(),
+      occupation: json['occupation']?.toString(),
+    );
+  }
+}
+
 class ProposalModel {
   final String id;
   final String animalId;
@@ -100,6 +220,8 @@ class ProposalModel {
   final DateTime? vetReviewedAt;
   final DateTime? uiicSentAt;
   final DateTime createdAt;
+  final ProposalAnimalDetail? animal;
+  final ProposalFarmerDetail? farmer;
 
   const ProposalModel({
     required this.id,
@@ -118,6 +240,8 @@ class ProposalModel {
     this.vetReviewedAt,
     this.uiicSentAt,
     required this.createdAt,
+    this.animal,
+    this.farmer,
   });
 
   /// Human-readable status label.
@@ -163,6 +287,12 @@ class ProposalModel {
       vetReviewedAt: _parseDateTime(json['vetReviewedAt'] ?? json['vet_reviewed_at']),
       uiicSentAt: _parseDateTime(json['uiicSentAt'] ?? json['uiic_sent_at']),
       createdAt: _parseDateTime(json['createdAt'] ?? json['created_at']) ?? DateTime.now(),
+      animal: json['animal'] is Map<String, dynamic>
+          ? ProposalAnimalDetail.fromJson(json['animal'] as Map<String, dynamic>)
+          : null,
+      farmer: json['farmer'] is Map<String, dynamic>
+          ? ProposalFarmerDetail.fromJson(json['farmer'] as Map<String, dynamic>)
+          : null,
     );
   }
 

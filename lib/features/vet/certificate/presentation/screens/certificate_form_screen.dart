@@ -2,6 +2,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import 'package:cattleshield/core/constants/app_colors.dart';
 import 'package:cattleshield/core/constants/app_spacing.dart';
@@ -60,10 +61,19 @@ class _CertificateFormScreenState extends ConsumerState<CertificateFormScreen> {
     final schemaAsync = ref.watch(_certSchemaProvider(_certType.schemaKey));
 
     return Scaffold(
+      backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: Text(_certType.label),
+        title: Text(_certType.label, style: GoogleFonts.manrope(fontWeight: FontWeight.w700)),
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
+        elevation: 0,
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [AppColors.primary, AppColors.primaryLight],
+            ),
+          ),
+        ),
       ),
       body: LoadingOverlay(
         isLoading: _isSubmitting,

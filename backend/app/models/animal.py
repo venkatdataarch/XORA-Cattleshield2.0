@@ -35,6 +35,7 @@ class Animal(Base):
     height_cm: Mapped[float | None] = mapped_column(Float, nullable=True)
     milk_yield_ltr: Mapped[float | None] = mapped_column(Float, nullable=True)
     muzzle_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    muzzle_embedding: Mapped[str | None] = mapped_column(Text, nullable=True)  # JSON-serialized 2048-dim vector
     muzzle_images: Mapped[dict | None] = mapped_column(JSON, default=list)
     health_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
     health_risk_category: Mapped[str | None] = mapped_column(String(50), nullable=True)

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
 import 'package:cattleshield/core/constants/app_colors.dart';
@@ -88,20 +89,89 @@ class _ProposalDetailScreenState extends ConsumerState<ProposalDetailScreen> {
     final proposalAsync = ref.watch(_proposalDetailProvider(widget.proposalId));
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Proposal Details'),
-      ),
-      body: LoadingOverlay(
-        isLoading: _isSubmitting,
-        message: 'Submitting proposal...',
-        child: proposalAsync.when(
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (error, _) => AppErrorWidget(
-            message: error.toString(),
-            onRetry: () =>
-                ref.invalidate(_proposalDetailProvider(widget.proposalId)),
+      body: Container(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [AppColors.background, Colors.white],
           ),
-          data: (proposal) => _buildContent(context, proposal),
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              // Premium header
+              Container(
+                width: double.infinity,
+                margin: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+                padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [AppColors.primary, AppColors.primaryLight],
+                  ),
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.primary.withValues(alpha: 0.3),
+                      blurRadius: 20,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    GestureDetector(
+                      onTap: () => Navigator.of(context).pop(),
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(Icons.arrow_back, color: Colors.white, size: 20),
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Text(
+                        'Proposal Details',
+                        style: GoogleFonts.manrope(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              Expanded(
+                child: LoadingOverlay(
+                  isLoading: _isSubmitting,
+                  message: 'Submitting proposal...',
+                  child: proposalAsync.when(
+                    loading: () => const Center(
+                      child: CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+                      ),
+                    ),
+                    error: (error, _) => AppErrorWidget(
+                      message: error.toString(),
+                      onRetry: () =>
+                          ref.invalidate(_proposalDetailProvider(widget.proposalId)),
+                    ),
+                    data: (proposal) => _buildContent(context, proposal),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -109,30 +179,25 @@ class _ProposalDetailScreenState extends ConsumerState<ProposalDetailScreen> {
 
   Widget _buildContent(BuildContext context, ProposalModel proposal) {
     final dateFormat = DateFormat('dd MMM yyyy');
-
-    // Determine form type for schema loading.
     final species = proposal.animalSpecies?.toLowerCase() ?? '';
     final formType = (species == 'mule' || species == 'horse' || species == 'donkey')
         ? 'proposal_mule'
         : 'proposal_cattle';
 
     return SingleChildScrollView(
-      padding: AppSpacing.screenPadding,
+      padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Animal info card
           _buildAnimalInfoCard(context, proposal, dateFormat),
-          const SizedBox(height: AppSpacing.md),
+          const SizedBox(height: 16),
 
-          // Rejection reason (if rejected)
           if (proposal.status == ProposalStatus.vetRejected &&
               proposal.rejectionReason != null) ...[
             _buildRejectionCard(proposal),
-            const SizedBox(height: AppSpacing.md),
+            const SizedBox(height: 16),
           ],
 
-          // UIIC reference (if sent)
           if (proposal.uiicReference != null) ...[
             _buildInfoCard(
               icon: Icons.business,
@@ -140,20 +205,17 @@ class _ProposalDetailScreenState extends ConsumerState<ProposalDetailScreen> {
               value: proposal.uiicReference!,
               color: Colors.purple,
             ),
-            const SizedBox(height: AppSpacing.md),
+            const SizedBox(height: 16),
           ],
 
-          // Timeline
           ProposalTimeline(proposal: proposal),
-          const SizedBox(height: AppSpacing.md),
+          const SizedBox(height: 16),
 
-          // Form data in read-only mode
           _buildFormDataSection(formType, proposal),
-          const SizedBox(height: AppSpacing.md),
+          const SizedBox(height: 16),
 
-          // Action buttons
           _buildActions(context, proposal),
-          const SizedBox(height: AppSpacing.lg),
+          const SizedBox(height: 32),
         ],
       ),
     );
@@ -164,133 +226,137 @@ class _ProposalDetailScreenState extends ConsumerState<ProposalDetailScreen> {
     ProposalModel proposal,
     DateFormat dateFormat,
   ) {
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-        side: const BorderSide(color: AppColors.cardBorder),
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
       ),
-      child: Padding(
-        padding: AppSpacing.cardPadding,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-                  ),
-                  child: Icon(
-                    Icons.pets,
-                    color: AppColors.primary,
-                    size: 24,
-                  ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AppColors.secondary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
+                child: const Icon(Icons.pets, color: AppColors.secondary, size: 24),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      proposal.animalName ?? 'Animal #${proposal.animalId}',
+                      style: GoogleFonts.manrope(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    if (proposal.animalSpecies != null)
                       Text(
-                        proposal.animalName ?? 'Animal #${proposal.animalId}',
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textPrimary,
+                        proposal.animalSpecies!,
+                        style: GoogleFonts.manrope(
+                          fontSize: 13,
+                          color: Colors.grey.shade500,
                         ),
                       ),
-                      if (proposal.animalSpecies != null)
-                        Text(
-                          proposal.animalSpecies!,
-                          style: const TextStyle(
-                            fontSize: 13,
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                    ],
-                  ),
+                  ],
                 ),
-                ProposalStatusBadge(status: proposal.status),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            const Divider(height: 1, color: AppColors.divider),
-            const SizedBox(height: AppSpacing.sm),
-            Row(
-              children: [
+              ),
+              ProposalStatusBadge(status: proposal.status),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Divider(height: 1, color: Colors.grey.shade200),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              _DetailItem(
+                label: 'Created',
+                value: dateFormat.format(proposal.createdAt),
+              ),
+              if (proposal.sumInsured != null)
                 _DetailItem(
-                  label: 'Created',
-                  value: dateFormat.format(proposal.createdAt),
+                  label: 'Sum Insured',
+                  value: NumberFormat.currency(
+                    locale: 'en_IN',
+                    symbol: '\u20B9',
+                    decimalDigits: 0,
+                  ).format(proposal.sumInsured),
                 ),
-                if (proposal.sumInsured != null)
-                  _DetailItem(
-                    label: 'Sum Insured',
-                    value: NumberFormat.currency(
-                      locale: 'en_IN',
-                      symbol: '\u20B9',
-                      decimalDigits: 0,
-                    ).format(proposal.sumInsured),
-                  ),
-                if (proposal.premium != null)
-                  _DetailItem(
-                    label: 'Premium',
-                    value: NumberFormat.currency(
-                      locale: 'en_IN',
-                      symbol: '\u20B9',
-                      decimalDigits: 0,
-                    ).format(proposal.premium),
-                  ),
-              ],
-            ),
-          ],
-        ),
+              if (proposal.premium != null)
+                _DetailItem(
+                  label: 'Premium',
+                  value: NumberFormat.currency(
+                    locale: 'en_IN',
+                    symbol: '\u20B9',
+                    decimalDigits: 0,
+                  ).format(proposal.premium),
+                ),
+            ],
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildRejectionCard(ProposalModel proposal) {
-    return Card(
-      elevation: 0,
-      color: AppColors.error.withValues(alpha: 0.05),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-        side: BorderSide(color: AppColors.error.withValues(alpha: 0.3)),
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.error.withValues(alpha: 0.03),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.error.withValues(alpha: 0.2)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
       ),
-      child: Padding(
-        padding: AppSpacing.cardPadding,
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Icon(Icons.error_outline, color: AppColors.error, size: 20),
-            const SizedBox(width: AppSpacing.sm),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Rejection Reason',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.error,
-                    ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.error_outline, color: AppColors.error, size: 20),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Rejection Reason',
+                  style: GoogleFonts.manrope(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.error,
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    proposal.rejectionReason!,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      color: AppColors.textPrimary,
-                    ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  proposal.rejectionReason!,
+                  style: GoogleFonts.manrope(
+                    fontSize: 13,
+                    color: AppColors.textPrimary,
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -301,40 +367,49 @@ class _ProposalDetailScreenState extends ConsumerState<ProposalDetailScreen> {
     required String value,
     required Color color,
   }) {
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-        side: BorderSide(color: color.withValues(alpha: 0.3)),
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
       ),
-      child: Padding(
-        padding: AppSpacing.cardPadding,
-        child: Row(
-          children: [
-            Icon(icon, color: color, size: 20),
-            const SizedBox(width: AppSpacing.sm),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-                Text(
-                  value,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: color,
-                  ),
-                ),
-              ],
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(10),
             ),
-          ],
-        ),
+            child: Icon(icon, color: color, size: 20),
+          ),
+          const SizedBox(width: 12),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: GoogleFonts.manrope(fontSize: 12, color: Colors.grey.shade500),
+              ),
+              Text(
+                value,
+                style: GoogleFonts.manrope(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: color,
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -345,8 +420,10 @@ class _ProposalDetailScreenState extends ConsumerState<ProposalDetailScreen> {
     return schemaAsync.when(
       loading: () => const Center(
         child: Padding(
-          padding: EdgeInsets.all(AppSpacing.lg),
-          child: CircularProgressIndicator(),
+          padding: EdgeInsets.all(24),
+          child: CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+          ),
         ),
       ),
       error: (_, __) => const SizedBox.shrink(),
@@ -372,7 +449,6 @@ class _ProposalDetailScreenState extends ConsumerState<ProposalDetailScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // Edit button (only for drafts)
         if (proposal.isEditable) ...[
           SecondaryButton(
             label: 'Edit Proposal',
@@ -384,25 +460,71 @@ class _ProposalDetailScreenState extends ConsumerState<ProposalDetailScreen> {
               );
             },
           ),
-          const SizedBox(height: AppSpacing.sm),
+          const SizedBox(height: 10),
         ],
 
-        // Submit button (only for drafts)
         if (proposal.isSubmittable)
-          PrimaryButton(
-            label: 'Submit Proposal',
-            icon: Icons.send,
-            onPressed: () => _submitProposal(proposal),
+          Container(
+            height: 54,
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [AppColors.primary, AppColors.primaryLight],
+              ),
+              borderRadius: BorderRadius.circular(14),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.primary.withValues(alpha: 0.3),
+                  blurRadius: 12,
+                  offset: const Offset(0, 6),
+                ),
+              ],
+            ),
+            child: ElevatedButton.icon(
+              onPressed: () => _submitProposal(proposal),
+              icon: const Icon(Icons.send, color: Colors.white, size: 20),
+              label: Text(
+                'Submit Proposal',
+                style: GoogleFonts.manrope(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.transparent,
+                shadowColor: Colors.transparent,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              ),
+            ),
           ),
 
-        // View Policy link (if policy created)
         if (proposal.hasPolicyCreated)
-          PrimaryButton(
-            label: 'View Policy',
-            icon: Icons.verified,
-            onPressed: () {
-              context.push('/farmer/policies');
-            },
+          Container(
+            height: 54,
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [AppColors.primary, AppColors.primaryLight],
+              ),
+              borderRadius: BorderRadius.circular(14),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.primary.withValues(alpha: 0.3),
+                  blurRadius: 12,
+                  offset: const Offset(0, 6),
+                ),
+              ],
+            ),
+            child: ElevatedButton.icon(
+              onPressed: () {
+                context.push('/farmer/policies');
+              },
+              icon: const Icon(Icons.verified, color: Colors.white, size: 20),
+              label: Text(
+                'View Policy',
+                style: GoogleFonts.manrope(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.transparent,
+                shadowColor: Colors.transparent,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              ),
+            ),
           ),
       ],
     );
@@ -423,17 +545,17 @@ class _DetailItem extends StatelessWidget {
         children: [
           Text(
             label,
-            style: const TextStyle(
+            style: GoogleFonts.manrope(
               fontSize: 11,
-              color: AppColors.textTertiary,
+              color: Colors.grey.shade500,
             ),
           ),
           const SizedBox(height: 2),
           Text(
             value,
-            style: const TextStyle(
+            style: GoogleFonts.manrope(
               fontSize: 13,
-              fontWeight: FontWeight.w500,
+              fontWeight: FontWeight.w600,
               color: AppColors.textPrimary,
             ),
           ),

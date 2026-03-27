@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import 'package:cattleshield/core/constants/app_colors.dart';
 import 'package:cattleshield/core/constants/app_spacing.dart';
@@ -23,10 +24,19 @@ class CertificatePreviewScreen extends ConsumerWidget {
     final certAsync = ref.watch(selectedCertificateProvider(certificateId));
 
     return Scaffold(
+      backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('Certificate Preview'),
+        title: Text('Certificate Preview', style: GoogleFonts.manrope(fontWeight: FontWeight.w700)),
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
+        elevation: 0,
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [AppColors.primary, AppColors.primaryLight],
+            ),
+          ),
+        ),
       ),
       body: certAsync.when(
         loading: () => const LoadingOverlay(

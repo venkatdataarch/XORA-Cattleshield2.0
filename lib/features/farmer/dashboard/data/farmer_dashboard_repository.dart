@@ -13,6 +13,7 @@ class DashboardStats {
   final int expiredPolicies;
   final int totalAnimals;
   final int pendingClaims;
+  final int pendingProposals;
 
   const DashboardStats({
     this.activePolicies = 0,
@@ -20,6 +21,7 @@ class DashboardStats {
     this.expiredPolicies = 0,
     this.totalAnimals = 0,
     this.pendingClaims = 0,
+    this.pendingProposals = 0,
   });
 
   /// Total number of policies across all statuses.
@@ -35,6 +37,7 @@ class DashboardStats {
           _parseInt(json['expiredPolicies'] ?? json['expired_policies']),
       totalAnimals: _parseInt(json['totalAnimals'] ?? json['total_animals']),
       pendingClaims: _parseInt(json['pendingClaims'] ?? json['pending_claims']),
+      pendingProposals: _parseInt(json['pendingProposals'] ?? json['pending_proposals']),
     );
   }
 

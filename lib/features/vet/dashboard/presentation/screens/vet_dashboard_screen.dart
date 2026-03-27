@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
 import 'package:cattleshield/core/constants/app_colors.dart';
@@ -11,6 +12,7 @@ import 'package:cattleshield/shared/widgets/empty_state_widget.dart';
 import 'package:cattleshield/shared/widgets/loading_overlay.dart';
 import 'package:cattleshield/features/farmer/proposal/domain/proposal_model.dart';
 import 'package:cattleshield/features/farmer/claim/domain/claim_model.dart';
+import 'package:cattleshield/features/auth/presentation/providers/auth_provider.dart';
 import '../widgets/vet_stats_card.dart';
 import '../widgets/pending_reviews_list.dart';
 
@@ -163,6 +165,7 @@ class VetDashboardScreen extends ConsumerWidget {
     final dashboardAsync = ref.watch(vetDashboardProvider);
 
     return Scaffold(
+      backgroundColor: AppColors.background,
       body: dashboardAsync.when(
         loading: () => const LoadingOverlay(
           isLoading: true,
@@ -212,26 +215,35 @@ class VetDashboardScreen extends ConsumerWidget {
 
   Widget _buildHeader(BuildContext context) {
     return Container(
+      margin: const EdgeInsets.fromLTRB(20, 12, 20, 0),
       padding: EdgeInsets.only(
-        top: MediaQuery.of(context).padding.top + AppSpacing.md,
-        left: AppSpacing.md,
-        right: AppSpacing.md,
-        bottom: AppSpacing.lg,
+        top: MediaQuery.of(context).padding.top + 16,
+        left: 20,
+        right: 20,
+        bottom: 20,
       ),
-      decoration: const BoxDecoration(
-        color: AppColors.primary,
-        borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(20),
-          bottomRight: Radius.circular(20),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [AppColors.primary, AppColors.primaryLight],
         ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withValues(alpha: 0.3),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
       ),
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(10),
+            padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.15),
-              shape: BoxShape.circle,
+              borderRadius: BorderRadius.circular(14),
             ),
             child: const Icon(
               Icons.medical_services,
@@ -239,26 +251,67 @@ class VetDashboardScreen extends ConsumerWidget {
               size: 28,
             ),
           ),
-          const SizedBox(width: AppSpacing.md),
+          const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   'Vet Dashboard',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                      ),
+                  style: GoogleFonts.manrope(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white,
+                  ),
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: 4),
                 Text(
                   'Review & approve livestock insurance',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Colors.white.withValues(alpha: 0.8),
-                      ),
+                  style: GoogleFonts.manrope(
+                    fontSize: 13,
+                    color: Colors.white.withValues(alpha: 0.7),
+                  ),
                 ),
               ],
+            ),
+          ),
+          // Logout button
+          GestureDetector(
+            onTap: () {
+              showDialog(
+                context: context,
+                builder: (ctx) => AlertDialog(
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  title: Text('Logout', style: GoogleFonts.manrope(fontWeight: FontWeight.w700)),
+                  content: Text('Are you sure you want to logout?', style: GoogleFonts.inter()),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(ctx),
+                      child: Text('Cancel', style: GoogleFonts.inter(color: Colors.grey)),
+                    ),
+                    ElevatedButton(
+                      onPressed: () {
+                        Navigator.pop(ctx);
+                        ProviderScope.containerOf(context).read(authProvider.notifier).logout();
+                        context.go('/login');
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.error,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                      child: Text('Logout', style: GoogleFonts.inter(color: Colors.white)),
+                    ),
+                  ],
+                ),
+              );
+            },
+            child: Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(Icons.logout_rounded, color: Colors.white, size: 22),
             ),
           ),
         ],
@@ -318,16 +371,16 @@ class VetDashboardScreen extends ConsumerWidget {
             onScreenImages: (item) {
               // Navigate to image screening
               if (item.isProposal) {
-                context.push('/vet/proposal/${item.id}/images');
+                context.push('/vet/reviews/proposals/${item.id}');
               } else {
-                context.push('/vet/claim/${item.id}/images');
+                context.push('/vet/reviews/claims/${item.id}');
               }
             },
             onAnalyse: (item) {
               if (item.isProposal) {
-                context.push('/vet/proposal/${item.id}/review');
+                context.push('/vet/reviews/proposals/${item.id}');
               } else {
-                context.push('/vet/claim/${item.id}/review');
+                context.push('/vet/reviews/claims/${item.id}');
               }
             },
           ),

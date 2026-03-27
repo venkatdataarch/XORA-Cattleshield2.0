@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from app.database import create_tables
-from app.routers import auth, animals, proposals, policies, claims, vet, certificates, form_schemas, ai, audit_logs, fraud
+from app.routers import auth, animals, proposals, policies, claims, vet, certificates, form_schemas, ai, audit_logs, fraud, dashboard, admin
 from app.middleware.audit import AuditMiddleware
 
 
@@ -55,6 +55,8 @@ app.include_router(form_schemas.router, prefix="/api")
 app.include_router(ai.router, prefix="/api")
 app.include_router(audit_logs.router, prefix="/api")
 app.include_router(fraud.router, prefix="/api")
+app.include_router(dashboard.router, prefix="/api")
+app.include_router(admin.router, prefix="/api")
 
 
 @app.get("/")

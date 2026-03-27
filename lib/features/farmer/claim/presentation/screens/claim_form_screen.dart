@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import 'package:cattleshield/core/constants/app_colors.dart';
 import 'package:cattleshield/core/constants/app_spacing.dart';
@@ -22,12 +23,6 @@ final _claimFormSchemaProvider =
 });
 
 /// Screen for creating a new insurance claim.
-///
-/// Flow:
-/// 1. User selects claim type (Death / Injury / Disease)
-/// 2. Loads appropriate form schema
-/// 3. User fills out the form
-/// 4. Submit creates the claim
 class ClaimFormScreen extends ConsumerStatefulWidget {
   final String policyId;
 
@@ -56,7 +51,6 @@ class _ClaimFormScreenState extends ConsumerState<ClaimFormScreen> {
     }
   }
 
-  /// Build initial form data with pre-filled policy details.
   Map<String, dynamic> _buildInitialData() {
     final data = <String, dynamic>{};
     final policy = ref.read(selectedPolicyProvider);
@@ -115,50 +109,113 @@ class _ClaimFormScreenState extends ConsumerState<ClaimFormScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          _selectedType != null
-              ? 'File ${_selectedType!.label} Claim'
-              : 'File a Claim',
+      body: Container(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [AppColors.background, Colors.white],
+          ),
         ),
-      ),
-      body: LoadingOverlay(
-        isLoading: _isSubmitting,
-        message: 'Submitting claim...',
-        child: _selectedType == null
-            ? _buildTypeSelection()
-            : _buildClaimForm(),
+        child: SafeArea(
+          child: Column(
+            children: [
+              // Premium header
+              Container(
+                width: double.infinity,
+                margin: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+                padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [AppColors.primary, AppColors.primaryLight],
+                  ),
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.primary.withValues(alpha: 0.3),
+                      blurRadius: 20,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    GestureDetector(
+                      onTap: () => Navigator.of(context).pop(),
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(Icons.arrow_back, color: Colors.white, size: 20),
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Text(
+                        _selectedType != null
+                            ? 'File ${_selectedType!.label} Claim'
+                            : 'File a Claim',
+                        style: GoogleFonts.manrope(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              Expanded(
+                child: LoadingOverlay(
+                  isLoading: _isSubmitting,
+                  message: 'Submitting claim...',
+                  child: _selectedType == null
+                      ? _buildTypeSelection()
+                      : _buildClaimForm(),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
 
-  /// Step 1: Claim type selection.
   Widget _buildTypeSelection() {
     return SingleChildScrollView(
-      padding: AppSpacing.screenPadding,
+      padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          const SizedBox(height: 8),
+          Text(
             'What type of claim?',
-            style: TextStyle(
+            style: GoogleFonts.manrope(
               fontSize: 20,
-              fontWeight: FontWeight.w700,
+              fontWeight: FontWeight.w800,
               color: AppColors.textPrimary,
             ),
           ),
-          const SizedBox(height: AppSpacing.sm),
-          const Text(
+          const SizedBox(height: 8),
+          Text(
             'Select the type of claim you want to file for this policy.',
-            style: TextStyle(
+            style: GoogleFonts.manrope(
               fontSize: 14,
-              color: AppColors.textSecondary,
+              color: Colors.grey.shade500,
             ),
           ),
-          const SizedBox(height: AppSpacing.lg),
+          const SizedBox(height: 24),
           ...ClaimType.values.map((type) {
             return Padding(
-              padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+              padding: const EdgeInsets.only(bottom: 12),
               child: _ClaimTypeCard(
                 type: type,
                 onTap: () => setState(() => _selectedType = type),
@@ -170,12 +227,15 @@ class _ClaimFormScreenState extends ConsumerState<ClaimFormScreen> {
     );
   }
 
-  /// Step 2: Dynamic form for the selected claim type.
   Widget _buildClaimForm() {
     final schemaAsync = ref.watch(_claimFormSchemaProvider(_formType));
 
     return schemaAsync.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
+      loading: () => const Center(
+        child: CircularProgressIndicator(
+          valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+        ),
+      ),
       error: (error, _) => AppErrorWidget(
         message: 'Failed to load form: $error',
         onRetry: () => ref.invalidate(_claimFormSchemaProvider(_formType)),
@@ -188,29 +248,34 @@ class _ClaimFormScreenState extends ConsumerState<ClaimFormScreen> {
             // Type selection indicator
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              color: _selectedType!.color.withValues(alpha: 0.08),
+              margin: const EdgeInsets.symmetric(horizontal: 20),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: _selectedType!.color.withValues(alpha: 0.05),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: _selectedType!.color.withValues(alpha: 0.2)),
+              ),
               child: Row(
                 children: [
                   Icon(_selectedType!.icon, size: 18, color: _selectedType!.color),
                   const SizedBox(width: 8),
                   Text(
                     '${_selectedType!.label} Claim',
-                    style: TextStyle(
+                    style: GoogleFonts.manrope(
                       fontSize: 14,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w700,
                       color: _selectedType!.color,
                     ),
                   ),
                   const Spacer(),
                   TextButton(
                     onPressed: () => setState(() => _selectedType = null),
-                    child: const Text('Change'),
+                    child: Text('Change', style: GoogleFonts.manrope(fontWeight: FontWeight.w600)),
                   ),
                 ],
               ),
             ),
-            // Form
+            const SizedBox(height: 8),
             Expanded(
               child: DynamicFormRenderer(
                 schema: schema,
@@ -226,7 +291,6 @@ class _ClaimFormScreenState extends ConsumerState<ClaimFormScreen> {
   }
 }
 
-/// Card for selecting a claim type.
 class _ClaimTypeCard extends StatelessWidget {
   final ClaimType type;
   final VoidCallback onTap;
@@ -249,54 +313,58 @@ class _ClaimTypeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-        side: BorderSide(color: type.color.withValues(alpha: 0.3)),
-      ),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-        child: Padding(
-          padding: AppSpacing.cardPadding,
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: type.color.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-                ),
-                child: Icon(type.icon, color: type.color, size: 28),
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: type.color.withValues(alpha: 0.2)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.06),
+              blurRadius: 20,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: type.color.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(14),
               ),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      type.label,
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: type.color,
-                      ),
+              child: Icon(type.icon, color: type.color, size: 28),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    type.label,
+                    style: GoogleFonts.manrope(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: type.color,
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      _description,
-                      style: const TextStyle(
-                        fontSize: 13,
-                        color: AppColors.textSecondary,
-                      ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    _description,
+                    style: GoogleFonts.manrope(
+                      fontSize: 13,
+                      color: Colors.grey.shade500,
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-              Icon(Icons.chevron_right, color: type.color),
-            ],
-          ),
+            ),
+            Icon(Icons.chevron_right, color: type.color),
+          ],
         ),
       ),
     );
