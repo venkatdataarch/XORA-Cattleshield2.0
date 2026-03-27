@@ -166,7 +166,7 @@ class _VetClaimReviewScreenState extends ConsumerState<VetClaimReviewScreen> {
                   approveEnabled: _allChecked,
                   showRequestChanges: false,
                   isLoading: _isSubmitting,
-                  onReject: () => _submitDecision('rejected'),
+                  onReject: (reason) => _submitDecision('rejected', reason: reason),
                   onApprove: () => _submitDecision('approved'),
                 ),
               ],
@@ -467,13 +467,16 @@ class _VetClaimReviewScreenState extends ConsumerState<VetClaimReviewScreen> {
     );
   }
 
-  Future<void> _submitDecision(String decision) async {
+  Future<void> _submitDecision(String decision, {String? reason}) async {
     setState(() => _isSubmitting = true);
     try {
       final dio = ref.read(dioClientProvider);
       await dio.post(
         ApiEndpoints.claimVetDecision(widget.claimId),
-        data: {'decision': decision},
+        data: {
+          'decision': decision,
+          if (reason != null && reason.isNotEmpty) 'reason': reason,
+        },
       );
 
       if (!mounted) return;

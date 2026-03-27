@@ -1,6 +1,6 @@
 import uuid
 import random
-from datetime import datetime, timezone, timedelta
+from datetime import date, datetime, timezone, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy import select, func
@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ..database import get_db
 from ..models.claim import Claim
 from ..models.policy import Policy
+from ..models.proposal import Proposal
 from ..models.animal import Animal
 from ..models.user import User
 from ..schemas.claim import ClaimCreateRequest, VetClaimDecisionRequest, ClaimResponse
@@ -17,6 +18,26 @@ from ..utils.file_storage import save_upload
 from .fraud import create_fraud_alert
 
 router = APIRouter(prefix="/claims", tags=["Claims"])
+
+
+async def _verify_policy_owner(db: AsyncSession, policy_id, user: User):
+    """Verify the requesting farmer owns the policy (via proposal.farmer_id)."""
+    result = await db.execute(
+        select(Proposal).join(Policy, Policy.proposal_id == Proposal.id).where(Policy.id == policy_id)
+    )
+    proposal = result.scalar_one_or_none()
+    if not proposal or str(proposal.farmer_id) != str(user.id):
+        raise HTTPException(status_code=403, detail="Not authorized to access this policy's claims")
+
+
+async def _verify_claim_owner(db: AsyncSession, claim: Claim, user: User):
+    """Verify the requesting farmer owns the claim (via policy -> proposal chain)."""
+    result = await db.execute(
+        select(Proposal).join(Policy, Policy.proposal_id == Proposal.id).where(Policy.id == claim.policy_id)
+    )
+    proposal = result.scalar_one_or_none()
+    if not proposal or str(proposal.farmer_id) != str(user.id):
+        raise HTTPException(status_code=403, detail="Not authorized to access this claim")
 
 
 def _claim_response(c: Claim) -> ClaimResponse:
@@ -46,7 +67,6 @@ async def list_claims(
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    from ..models.proposal import Proposal
     query = (
         select(Claim)
         .join(Policy, Claim.policy_id == Policy.id)
@@ -74,6 +94,23 @@ async def create_claim(
     policy = policy_result.scalar_one_or_none()
     if not policy:
         raise HTTPException(status_code=404, detail="Policy not found")
+
+    # Security: verify the policy belongs to the requesting farmer
+    await _verify_policy_owner(db, policy.id, user)
+
+    # Fix 4: Reject claims on expired policies
+    if policy.end_date < date.today():
+        raise HTTPException(status_code=400, detail="Cannot file claim on expired policy")
+
+    # Fix 5: Prevent duplicate open claims on the same policy
+    existing = await db.execute(
+        select(Claim).where(
+            Claim.policy_id == policy.id,
+            Claim.status.notin_(["settled", "vet_rejected", "admin_rejected"])
+        )
+    )
+    if existing.scalar_one_or_none():
+        raise HTTPException(status_code=400, detail="An active claim already exists for this policy")
 
     claim_number = f"CLM-{uuid.uuid4().hex[:8].upper()}"
 
@@ -108,7 +145,6 @@ async def create_claim(
 
     # 2. Claim velocity: same farmer >2 claims in 12 months
     twelve_months_ago = datetime.now(timezone.utc) - timedelta(days=365)
-    from ..models.proposal import Proposal
     farmer_claims_q = (
         select(func.count(Claim.id))
         .join(Policy, Claim.policy_id == Policy.id)
@@ -140,6 +176,9 @@ async def get_claim(
     claim = result.scalar_one_or_none()
     if not claim:
         raise HTTPException(status_code=404, detail="Claim not found")
+    # Ownership check: allow owner, vet, or admin
+    if user.role not in ("vet", "admin"):
+        await _verify_claim_owner(db, claim, user)
     return _claim_response(claim)
 
 
@@ -156,6 +195,8 @@ async def upload_evidence(
     claim = result.scalar_one_or_none()
     if not claim:
         raise HTTPException(status_code=404, detail="Claim not found")
+    # Security: only the owning farmer can upload evidence
+    await _verify_claim_owner(db, claim, user)
 
     evidence = list(claim.evidence_media or [])
     for f in files:
@@ -184,6 +225,9 @@ async def muzzle_verify(
     claim = result.scalar_one_or_none()
     if not claim:
         raise HTTPException(status_code=404, detail="Claim not found")
+    # Security: allow owner, vet, or admin
+    if user.role not in ("vet", "admin"):
+        await _verify_claim_owner(db, claim, user)
 
     # Mock AI muzzle match — wider range to sometimes trigger fraud alerts
     score = round(random.uniform(45.0, 99.0), 1)
@@ -239,12 +283,71 @@ async def vet_claim_decision(
     if not claim:
         raise HTTPException(status_code=404, detail="Claim not found")
 
+    # Fix 9: Only allow vet decision if claim is in submitted status
+    if claim.status != "submitted":
+        raise HTTPException(status_code=400, detail="Claim is not in submitted status")
+
+    # Record vet info
+    claim.vet_id = str(vet.id)
+    claim.vet_remarks = req.reason
+
     if req.decision == "approved":
-        claim.status = "settled"
-        claim.settlement_amount = req.settlement_amount or claim.form_data.get("claim_amount", 0)
-        claim.settled_at = datetime.utcnow()
+        # Fix 6: Muzzle verification required before approval
+        if not claim.ai_muzzle_match_score or claim.ai_muzzle_match_score < 60:
+            raise HTTPException(
+                status_code=400,
+                detail="Muzzle verification required with score >= 60% before approval"
+            )
+        # Fix 3: Vet approve goes to vet_approved, NOT settled
+        claim.status = "vet_approved"
     else:
         claim.status = "vet_rejected"
+        claim.rejection_reason = req.reason
+
+    await db.flush()
+    return _claim_response(claim)
+
+
+@router.post("/{claim_id}/admin-decision", response_model=ClaimResponse)
+async def admin_claim_decision(
+    claim_id: str,
+    req: VetClaimDecisionRequest,
+    db: AsyncSession = Depends(get_db),
+    admin: User = Depends(get_current_user),
+):
+    """Admin settles or rejects a vet-approved claim."""
+    if admin.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    result = await db.execute(
+        select(Claim).where(Claim.id == claim_id)
+    )
+    claim = result.scalar_one_or_none()
+    if not claim:
+        raise HTTPException(status_code=404, detail="Claim not found")
+
+    if claim.status != "vet_approved":
+        raise HTTPException(status_code=400, detail="Claim must be vet-approved first")
+
+    if req.decision == "approved":
+        # Fix 7: Settlement amount cap - cannot exceed sum_insured
+        policy_result = await db.execute(
+            select(Policy).where(Policy.id == claim.policy_id)
+        )
+        policy = policy_result.scalar_one_or_none()
+
+        settlement_amount = req.settlement_amount or claim.form_data.get("claim_amount", 0)
+        if policy and settlement_amount > policy.sum_insured:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Settlement amount cannot exceed sum insured ({policy.sum_insured})"
+            )
+
+        claim.status = "settled"
+        claim.settlement_amount = settlement_amount
+        claim.settled_at = datetime.utcnow()
+    else:
+        claim.status = "admin_rejected"
         claim.rejection_reason = req.reason
 
     await db.flush()

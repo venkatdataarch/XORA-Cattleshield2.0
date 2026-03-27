@@ -27,6 +27,7 @@ import '../../features/farmer/policy/presentation/screens/policy_detail_screen.d
 
 // Admin screens
 import '../../features/admin/presentation/screens/admin_dashboard_screen.dart';
+import '../../features/admin/presentation/screens/admin_proposal_review_screen.dart';
 import '../../features/admin/presentation/screens/audit_log_screen.dart';
 import '../../features/admin/presentation/screens/fraud_alerts_screen.dart';
 
@@ -361,6 +362,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 path: '/admin',
                 name: RouteNames.adminDashboard,
                 builder: (context, state) => const AdminDashboardScreen(),
+                routes: [
+                  GoRoute(
+                    path: 'pending-approvals',
+                    name: RouteNames.adminPendingApprovals,
+                    builder: (context, state) =>
+                        const AdminProposalReviewScreen(),
+                  ),
+                ],
               ),
             ],
           ),

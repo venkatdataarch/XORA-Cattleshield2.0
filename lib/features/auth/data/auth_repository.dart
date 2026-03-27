@@ -117,7 +117,7 @@ class AuthRepository {
     try {
       final responseData = await _remoteSource.register({
         ...data,
-        'role': UserRole.farmer.name,
+        'role': data['role']?.toString() ?? UserRole.farmer.name,
       });
 
       final user = AppUser.fromJson(
@@ -162,12 +162,13 @@ class AuthRepository {
       // Try to reconstruct a minimal user from secure storage.
       final userId = await _storage.getUserId();
       final role = await _storage.getUserRole();
-      if (userId != null && role != null) {
+      final parsedRole = UserRole.tryFromString(role);
+      if (userId != null && parsedRole != null) {
         final minimalUser = AppUser(
           id: userId,
           name: '',
           phone: '',
-          role: UserRole.fromString(role),
+          role: parsedRole,
         );
         return ApiResult.success(minimalUser);
       }
@@ -206,11 +207,18 @@ class AuthRepository {
       }
 
       // Reconstruct a minimal user from storage.
+      final parsedRole = UserRole.tryFromString(role);
+      if (parsedRole == null) {
+        // Unknown role stored — force re-login
+        await logout();
+        return const AuthState.unauthenticated();
+      }
+
       final user = AppUser(
         id: userId ?? '',
         name: '',
         phone: '',
-        role: UserRole.fromString(role ?? 'farmer'),
+        role: parsedRole,
       );
 
       _cachedUser = user;

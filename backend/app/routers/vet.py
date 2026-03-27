@@ -21,7 +21,7 @@ async def get_pending_reviews(
     # Get proposals needing vet review
     prop_result = await db.execute(
         select(Proposal).where(
-            Proposal.status.in_(["submitted", "vet_review"])
+            Proposal.status == "submitted"
         ).order_by(Proposal.submitted_at.desc())
     )
     proposals = prop_result.scalars().all()
@@ -99,7 +99,7 @@ async def get_pending_reviews(
     # Get claims needing vet review
     claim_result = await db.execute(
         select(Claim).where(
-            Claim.status.in_(["submitted", "vet_review"])
+            Claim.status == "submitted"
         ).order_by(Claim.created_at.desc())
     )
     claims = claim_result.scalars().all()
@@ -237,7 +237,7 @@ async def get_reviewed_items(
     # Reviewed proposals
     prop_result = await db.execute(
         select(Proposal).where(
-            Proposal.status.in_(reviewed_statuses + ["uiic_sent", "policy_created"]),
+            Proposal.status.in_(reviewed_statuses + ["uiic_approved", "uiic_rejected", "policy_created"]),
         ).order_by(Proposal.vet_reviewed_at.desc())
     )
     proposals = prop_result.scalars().all()
@@ -265,7 +265,7 @@ async def get_reviewed_items(
     if status and status in claim_statuses:
         claim_statuses = [status]
     else:
-        claim_statuses = ["vet_approved", "vet_rejected", "uiic_processing", "settled", "repudiated"]
+        claim_statuses = ["vet_approved", "vet_rejected", "admin_rejected", "settled"]
 
     claim_result = await db.execute(
         select(Claim).where(
@@ -288,10 +288,10 @@ async def get_reviewed_items(
         })
 
     # Stats
-    approved_count = sum(1 for p in proposal_list if p["status"] in ("vet_approved", "uiic_sent", "policy_created"))
-    approved_count += sum(1 for c in claim_list if c["status"] in ("vet_approved", "uiic_processing", "settled"))
+    approved_count = sum(1 for p in proposal_list if p["status"] in ("vet_approved", "uiic_approved", "policy_created"))
+    approved_count += sum(1 for c in claim_list if c["status"] in ("vet_approved", "settled"))
     rejected_count = sum(1 for p in proposal_list if p["status"] == "vet_rejected")
-    rejected_count += sum(1 for c in claim_list if c["status"] in ("vet_rejected", "repudiated"))
+    rejected_count += sum(1 for c in claim_list if c["status"] in ("vet_rejected", "admin_rejected"))
 
     return {
         "proposals": proposal_list,
@@ -311,7 +311,7 @@ async def get_vet_stats(
     # Count approved proposals
     result = await db.execute(
         select(func.count(Proposal.id)).where(
-            Proposal.status.in_(["vet_approved", "uiic_sent", "policy_created"]),
+            Proposal.status.in_(["vet_approved", "uiic_approved", "uiic_rejected", "policy_created"]),
         )
     )
     approved_proposals = result.scalar() or 0
@@ -327,7 +327,7 @@ async def get_vet_stats(
     # Count approved claims
     result = await db.execute(
         select(func.count(Claim.id)).where(
-            Claim.status.in_(["vet_approved", "uiic_processing", "settled"]),
+            Claim.status.in_(["vet_approved", "settled"]),
         )
     )
     approved_claims = result.scalar() or 0
@@ -335,7 +335,7 @@ async def get_vet_stats(
     # Count rejected claims
     result = await db.execute(
         select(func.count(Claim.id)).where(
-            Claim.status.in_(["vet_rejected", "repudiated"]),
+            Claim.status.in_(["vet_rejected", "admin_rejected"]),
         )
     )
     rejected_claims = result.scalar() or 0

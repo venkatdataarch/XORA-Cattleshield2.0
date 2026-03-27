@@ -55,6 +55,7 @@ class RouteNames {
   // Admin
   // ---------------------------------------------------------------------------
   static const adminDashboard = 'admin-dashboard';
+  static const adminPendingApprovals = 'admin-pending-approvals';
   static const auditLogs = 'audit-logs';
   static const fraudAlerts = 'fraud-alerts';
 

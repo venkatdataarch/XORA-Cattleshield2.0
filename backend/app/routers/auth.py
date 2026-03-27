@@ -36,6 +36,10 @@ def _user_response(user: User) -> UserResponse:
 
 @router.post("/register", response_model=TokenResponse)
 async def register(req: RegisterRequest, db: AsyncSession = Depends(get_db)):
+    # Security: self-registration is only allowed for farmers.
+    # Vet/admin/agent accounts must be created by an admin or via seed.
+    req.role = "farmer"
+
     # Check if phone already exists (from OTP flow)
     result = await db.execute(select(User).where(User.phone == req.phone))
     user = result.scalar_one_or_none()

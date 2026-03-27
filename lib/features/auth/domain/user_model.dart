@@ -6,11 +6,27 @@ enum UserRole {
   admin;
 
   /// Creates a [UserRole] from its JSON string representation.
+  ///
+  /// Returns `null` if the value does not match any known role, rather than
+  /// silently defaulting to [farmer].
+  static UserRole? tryFromString(String? value) {
+    if (value == null || value.isEmpty) return null;
+    final lower = value.toLowerCase();
+    for (final role in UserRole.values) {
+      if (role.name == lower) return role;
+    }
+    return null;
+  }
+
+  /// Creates a [UserRole] from its JSON string representation.
+  ///
+  /// Throws [ArgumentError] if [value] does not match any known role.
   static UserRole fromString(String value) {
-    return UserRole.values.firstWhere(
-      (role) => role.name == value.toLowerCase(),
-      orElse: () => UserRole.farmer,
-    );
+    final role = tryFromString(value);
+    if (role == null) {
+      throw ArgumentError('Unknown user role: "$value"');
+    }
+    return role;
   }
 }
 
@@ -56,7 +72,7 @@ class AppUser {
       id: json['id']?.toString() ?? json['_id']?.toString() ?? '',
       name: json['name']?.toString() ?? '',
       phone: json['phone']?.toString() ?? json['mobile']?.toString() ?? '',
-      role: UserRole.fromString(json['role']?.toString() ?? 'farmer'),
+      role: UserRole.tryFromString(json['role']?.toString()) ?? UserRole.farmer,
       email: json['email']?.toString(),
       address: json['address']?.toString(),
       village: json['village']?.toString(),

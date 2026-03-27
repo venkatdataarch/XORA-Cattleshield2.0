@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 from typing import Any
 
 
@@ -12,6 +12,12 @@ class VetClaimDecisionRequest(BaseModel):
     decision: str  # "approved" or "rejected"
     reason: str | None = None
     settlement_amount: float | None = None
+
+    @model_validator(mode="after")
+    def require_reason_on_reject(self):
+        if self.decision == "rejected" and not self.reason:
+            raise ValueError("Reason is required when rejecting a claim")
+        return self
 
 
 class ClaimResponse(BaseModel):

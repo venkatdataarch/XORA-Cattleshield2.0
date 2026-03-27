@@ -100,6 +100,9 @@ async def get_proposal(
     proposal = result.scalar_one_or_none()
     if not proposal:
         raise HTTPException(status_code=404, detail="Proposal not found")
+    # Ownership check: only the owning farmer or vet/admin can view
+    if user.role not in ("vet", "admin") and str(proposal.farmer_id) != str(user.id):
+        raise HTTPException(status_code=403, detail="Not authorized to view this proposal")
 
     resp = _proposal_response(proposal)
 
@@ -169,10 +172,6 @@ async def update_proposal(
 
     if req.form_data is not None:
         proposal.form_data = req.form_data
-    if req.status is not None:
-        proposal.status = req.status
-        if req.status == "submitted":
-            proposal.submitted_at = datetime.utcnow()
 
     await db.flush()
     return _proposal_response(proposal)
@@ -194,6 +193,9 @@ async def submit_proposal(
     if not proposal:
         raise HTTPException(status_code=404, detail="Proposal not found")
 
+    if proposal.status != "draft":
+        raise HTTPException(status_code=400, detail="Can only submit draft proposals")
+
     proposal.status = "submitted"
     proposal.submitted_at = datetime.utcnow()
     await db.flush()
@@ -214,7 +216,12 @@ async def vet_decision(
     if not proposal:
         raise HTTPException(status_code=404, detail="Proposal not found")
 
+    if proposal.status != "submitted":
+        raise HTTPException(status_code=400, detail="Proposal is not in submitted status")
+
     proposal.vet_reviewed_at = datetime.utcnow()
+    proposal.vet_id = str(vet.id)
+    proposal.vet_remarks = req.reason
 
     if req.decision == "approved":
         # Vet approved → goes to UIIC Admin for final approval

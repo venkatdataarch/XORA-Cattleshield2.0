@@ -10,12 +10,15 @@ import 'package:cattleshield/core/constants/app_spacing.dart';
 /// - Approve (green filled)
 ///
 /// [approveEnabled] should be wired to the review checklist completion state.
+///
+/// [onReject] and [onRequestChanges] now receive the reason text from the
+/// dialog so callers can forward it to the backend.
 class ApprovalActionBar extends StatelessWidget {
   final bool approveEnabled;
   final bool showRequestChanges;
   final bool isLoading;
-  final VoidCallback? onReject;
-  final VoidCallback? onRequestChanges;
+  final void Function(String reason)? onReject;
+  final void Function(String reason)? onRequestChanges;
   final VoidCallback? onApprove;
 
   const ApprovalActionBar({
@@ -123,7 +126,7 @@ class ApprovalActionBar extends StatelessWidget {
             onPressed: () {
               if (controller.text.trim().isNotEmpty) {
                 Navigator.pop(ctx);
-                onReject?.call();
+                onReject?.call(controller.text.trim());
               }
             },
             style: ElevatedButton.styleFrom(
@@ -167,7 +170,7 @@ class ApprovalActionBar extends StatelessWidget {
             onPressed: () {
               if (controller.text.trim().isNotEmpty) {
                 Navigator.pop(ctx);
-                onRequestChanges?.call();
+                onRequestChanges?.call(controller.text.trim());
               }
             },
             style: ElevatedButton.styleFrom(

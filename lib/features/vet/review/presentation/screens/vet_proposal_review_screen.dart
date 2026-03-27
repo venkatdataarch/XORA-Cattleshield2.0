@@ -144,9 +144,9 @@ class _VetProposalReviewScreenState
                   approveEnabled: _allChecked,
                   showRequestChanges: true,
                   isLoading: _isSubmitting,
-                  onReject: () => _submitDecision('rejected'),
-                  onRequestChanges: () =>
-                      _submitDecision('changes_requested'),
+                  onReject: (reason) => _submitDecision('rejected', reason: reason),
+                  onRequestChanges: (reason) =>
+                      _submitDecision('changes_requested', reason: reason),
                   onApprove: () => _submitDecision('approved'),
                 ),
               ],
@@ -687,13 +687,16 @@ class _VetProposalReviewScreenState
     );
   }
 
-  Future<void> _submitDecision(String decision) async {
+  Future<void> _submitDecision(String decision, {String? reason}) async {
     setState(() => _isSubmitting = true);
     try {
       final dio = ref.read(dioClientProvider);
       await dio.post(
         ApiEndpoints.proposalVetDecision(widget.proposalId),
-        data: {'decision': decision},
+        data: {
+          'decision': decision,
+          if (reason != null && reason.isNotEmpty) 'reason': reason,
+        },
       );
 
       if (!mounted) return;

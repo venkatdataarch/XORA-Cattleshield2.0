@@ -107,37 +107,11 @@ class _FarmerDashboardScreenState extends ConsumerState<FarmerDashboardScreen> {
                           size: 22,
                         ),
                         const SizedBox(width: 14),
-                        // Notification bell with badge
-                        Stack(
-                          children: [
-                            Icon(
-                              Icons.notifications_none_rounded,
-                              color: Colors.white.withValues(alpha: 0.7),
-                              size: 24,
-                            ),
-                            Positioned(
-                              right: 0,
-                              top: 0,
-                              child: Container(
-                                width: 16,
-                                height: 16,
-                                decoration: const BoxDecoration(
-                                  color: AppColors.error,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: Center(
-                                  child: Text(
-                                    '2',
-                                    style: GoogleFonts.inter(
-                                      fontSize: 9,
-                                      fontWeight: FontWeight.w700,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
+                        // Notification bell (no hardcoded badge)
+                        Icon(
+                          Icons.notifications_none_rounded,
+                          color: Colors.white.withValues(alpha: 0.7),
+                          size: 24,
                         ),
                         const SizedBox(width: 14),
                         // Avatar
@@ -718,101 +692,41 @@ class _ProtectionBanner extends StatelessWidget {
 class _RecentActivity extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    final items = [
-      _ActivityData(
-        icon: Icons.add_circle_outline,
-        title: 'Animal Registered',
-        subtitle: 'Gir Cow - HF-0042',
-        time: '2h ago',
+    // No real activity data available yet; show empty state instead of mock data
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 16),
+      decoration: BoxDecoration(
+        color: AppColors.cream.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.cardBorder.withValues(alpha: 0.5)),
       ),
-      _ActivityData(
-        icon: Icons.description_outlined,
-        title: 'Proposal Submitted',
-        subtitle: 'Buffalo - BF-0015',
-        time: '1d ago',
-      ),
-      _ActivityData(
-        icon: Icons.verified_outlined,
-        title: 'Policy Issued',
-        subtitle: 'POL-2024-0089',
-        time: '3d ago',
-      ),
-    ];
-
-    return Column(
-      children: items.map((item) {
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 12),
-          child: Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: AppColors.cream.withValues(alpha: 0.5),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: AppColors.cardBorder.withValues(alpha: 0.5)),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.06),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(
-                    item.icon,
-                    color: AppColors.primary,
-                    size: 20,
-                  ),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        item.title,
-                        style: GoogleFonts.poppins(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                      Text(
-                        item.subtitle,
-                        style: GoogleFonts.inter(
-                          fontSize: 12,
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Text(
-                  item.time,
-                  style: GoogleFonts.inter(
-                    fontSize: 11,
-                    color: AppColors.textTertiary,
-                  ),
-                ),
-              ],
+      child: Column(
+        children: [
+          Icon(
+            Icons.history_rounded,
+            size: 40,
+            color: AppColors.textTertiary.withValues(alpha: 0.5),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'No recent activity',
+            style: GoogleFonts.poppins(
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              color: AppColors.textSecondary,
             ),
           ),
-        );
-      }).toList(),
+          const SizedBox(height: 4),
+          Text(
+            'Your recent actions will appear here',
+            style: GoogleFonts.inter(
+              fontSize: 12,
+              color: AppColors.textTertiary,
+            ),
+          ),
+        ],
+      ),
     );
   }
-}
-
-class _ActivityData {
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final String time;
-
-  const _ActivityData({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.time,
-  });
 }

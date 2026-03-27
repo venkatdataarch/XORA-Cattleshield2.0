@@ -110,7 +110,7 @@ class _AnimalOnboardingScreenState
       case 0:
         return _selectedSpecies != null;
       case 1:
-        return _muzzleImages.length >= 1; // At least front
+        return _muzzleImages.length >= 3; // All 3 angles required
       case 2:
         return _bodyPhotos.length >= 3; // At least 3 body photos
       case 3:
@@ -127,7 +127,7 @@ class _AnimalOnboardingScreenState
         case 0:
           msg = 'Please select an animal type';
         case 1:
-          msg = 'Please capture at least the front muzzle image';
+          msg = 'Please capture all 3 muzzle angles (front, left, right)';
         case 2:
           msg = 'Please capture at least 3 body photos';
         case 3:
@@ -273,19 +273,25 @@ class _AnimalOnboardingScreenState
 
       if (animalId == null) throw Exception('Failed to create animal');
 
-      // Upload muzzle images for CNN embedding
+      // Upload all muzzle images for CNN embedding
       if (_muzzleImages.isNotEmpty) {
         try {
-          final frontBytes = await _muzzleImages[0].readAsBytes();
-          final formData = FormData.fromMap({
-            'file': MultipartFile.fromBytes(
-              frontBytes,
-              filename: 'front_muzzle.jpg',
-            ),
-          });
+          final muzzleFormData = FormData();
+          final angleNames = ['front', 'left', 'right'];
+          for (int i = 0; i < _muzzleImages.length; i++) {
+            final bytes = await _muzzleImages[i].readAsBytes();
+            final angleName = i < angleNames.length ? angleNames[i] : 'angle_$i';
+            muzzleFormData.files.add(MapEntry(
+              'files',
+              MultipartFile.fromBytes(
+                bytes,
+                filename: '${angleName}_muzzle.jpg',
+              ),
+            ));
+          }
           await client.post(
             '/ai/muzzle-register/$animalId',
-            data: formData,
+            data: muzzleFormData,
           );
         } catch (e) {
           debugPrint('Muzzle registration error: $e');

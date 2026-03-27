@@ -34,6 +34,8 @@ class Proposal(Base):
     submitted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     vet_reviewed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     uiic_sent_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    vet_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    vet_remarks: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     # Relationships

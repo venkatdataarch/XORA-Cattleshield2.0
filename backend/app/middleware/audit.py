@@ -1,13 +1,14 @@
 """Audit trail middleware — logs every mutating API call."""
 
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from ..database import async_session
 from ..models.audit_log import AuditLog
+from ..utils.security import decode_access_token
 
 
 # Map HTTP methods to action types
@@ -42,9 +43,19 @@ class AuditMiddleware(BaseHTTPMiddleware):
         action_type = _METHOD_ACTION[request.method]
         resource_type, resource_id = _extract_resource(request.url.path)
 
-        # Extract user info from request state (set by auth dependency)
-        user_id = getattr(request.state, "user_id", None)
-        user_role = getattr(request.state, "user_role", None)
+        # Extract user info from JWT token in Authorization header
+        user_id = None
+        user_role = None
+        auth_header = request.headers.get("authorization", "")
+        if auth_header.startswith("Bearer "):
+            token = auth_header.split(" ", 1)[1]
+            try:
+                payload = decode_access_token(token)
+                if payload:
+                    user_id = payload.get("sub")
+                    user_role = payload.get("role")
+            except Exception:
+                pass
 
         # Get client IP
         ip_address = request.client.host if request.client else None

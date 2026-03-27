@@ -15,6 +15,13 @@ from ..models.user import User
 router = APIRouter(prefix="/fraud-alerts", tags=["Fraud Detection"])
 
 
+def _require_admin(user: User):
+    """Raise 403 if user is not an admin."""
+    if user.role != "admin":
+        from fastapi import HTTPException
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+
 @router.get("/")
 async def list_fraud_alerts(
     alert_type: str | None = None,
@@ -26,6 +33,7 @@ async def list_fraud_alerts(
     current_user: User = Depends(get_current_user),
 ):
     """List fraud alerts with optional filters."""
+    _require_admin(current_user)
     query = select(FraudAlert).order_by(FraudAlert.timestamp.desc())
 
     if alert_type:
@@ -76,6 +84,7 @@ async def fraud_stats(
     current_user: User = Depends(get_current_user),
 ):
     """Get fraud alert statistics."""
+    _require_admin(current_user)
     total = (await db.execute(select(func.count(FraudAlert.id)))).scalar() or 0
     unresolved = (await db.execute(
         select(func.count(FraudAlert.id)).where(FraudAlert.resolved == False)
@@ -103,6 +112,7 @@ async def resolve_fraud_alert(
     current_user: User = Depends(get_current_user),
 ):
     """Mark a fraud alert as resolved."""
+    _require_admin(current_user)
     result = await db.execute(select(FraudAlert).where(FraudAlert.id == alert_id))
     alert = result.scalar_one_or_none()
     if not alert:

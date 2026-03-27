@@ -133,6 +133,9 @@ async def get_animal(
     animal = result.scalar_one_or_none()
     if not animal:
         raise HTTPException(status_code=404, detail="Animal not found")
+    # Ownership check: only the owner or vet/admin can view
+    if user.role not in ("vet", "admin") and str(animal.user_id) != str(user.id):
+        raise HTTPException(status_code=403, detail="Not authorized to view this animal")
     return _animal_response(animal)
 
 

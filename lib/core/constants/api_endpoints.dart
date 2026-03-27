@@ -73,6 +73,11 @@ class ApiEndpoints {
   static const String vetStats = '/vet/stats';
   static const String vetCertificates = '/vet-certificates';
 
+  // Admin
+  static const String adminPending = '/admin/pending';
+  static String proposalAdminDecision(String id) =>
+      '/proposals/$id/admin-decision';
+
   // AI
   static String healthScore(String animalId) =>
       '/ai/health-score/$animalId';

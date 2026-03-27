@@ -69,7 +69,7 @@ async def get_dashboard_stats(
     result = await db.execute(
         select(func.count(Proposal.id)).where(
             Proposal.farmer_id == user_id,
-            Proposal.status.in_(["submitted", "vet_review", "vet_approved", "uiic_sent"]),
+            Proposal.status.in_(["submitted", "vet_approved"]),
         )
     )
     pending_proposals = result.scalar() or 0
@@ -78,7 +78,7 @@ async def get_dashboard_stats(
     result = await db.execute(
         select(func.count(Claim.id)).where(
             Claim.animal_id.in_(farmer_animal_ids),
-            Claim.status.notin_(["settled", "repudiated"]),
+            Claim.status.notin_(["settled", "vet_rejected", "admin_rejected"]),
         )
     )
     pending_claims = result.scalar() or 0

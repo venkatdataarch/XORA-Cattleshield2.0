@@ -42,8 +42,8 @@ class AuthGuard {
     if (role == UserRole.admin && (location.startsWith('/farmer') || location.startsWith('/vet'))) {
       return '/admin';
     }
-    // Agents can access farmer routes
-    if (role == UserRole.agent && location.startsWith('/vet')) {
+    // Agents can access farmer routes but not vet or admin
+    if (role == UserRole.agent && (location.startsWith('/vet') || location.startsWith('/admin'))) {
       return '/farmer';
     }
 

@@ -37,6 +37,8 @@ class Claim(Base):
     settlement_amount: Mapped[float | None] = mapped_column(Float, nullable=True)
     settled_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     rejection_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    vet_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    vet_remarks: Mapped[str | None] = mapped_column(Text, nullable=True)
     animal_name: Mapped[str] = mapped_column(String(255), default="")
     policy_number: Mapped[str] = mapped_column(String(50), default="")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 from typing import Any
 
 
@@ -10,12 +10,17 @@ class ProposalCreateRequest(BaseModel):
 
 class ProposalUpdateRequest(BaseModel):
     form_data: dict[str, Any] | None = None
-    status: str | None = None
 
 
 class VetDecisionRequest(BaseModel):
     decision: str  # "approved" or "rejected"
     reason: str | None = None
+
+    @model_validator(mode="after")
+    def require_reason_on_reject(self):
+        if self.decision == "rejected" and not self.reason:
+            raise ValueError("Reason is required when rejecting a proposal")
+        return self
 
 
 class AnimalDetail(BaseModel):

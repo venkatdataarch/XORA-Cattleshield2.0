@@ -5,6 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import get_db
+from ..models.animal import Animal
 from ..models.policy import Policy
 from ..models.proposal import Proposal
 from ..models.user import User
@@ -62,4 +63,12 @@ async def get_policy(
     policy = result.scalar_one_or_none()
     if not policy:
         raise HTTPException(status_code=404, detail="Policy not found")
+    # Ownership check: verify via animal owner or allow vet/admin
+    if user.role not in ("vet", "admin"):
+        animal_result = await db.execute(
+            select(Animal).where(Animal.id == policy.animal_id)
+        )
+        animal = animal_result.scalar_one_or_none()
+        if not animal or str(animal.user_id) != str(user.id):
+            raise HTTPException(status_code=403, detail="Not authorized to view this policy")
     return _policy_response(policy)
