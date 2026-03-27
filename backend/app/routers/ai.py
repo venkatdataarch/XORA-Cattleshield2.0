@@ -164,12 +164,117 @@ async def upload_body_photos(
     flag_modified(animal, "body_photos")
     await db.commit()
 
+    # Auto-calculate CHI score after upload
+    chi_result = None
+    try:
+        from ..ai.chi_engine import calculate_chi_score
+        photo_bytes = []
+        for file in files:
+            await file.seek(0)
+            photo_bytes.append(await file.read())
+
+        if not photo_bytes:
+            # Re-read from disk
+            for photo in saved_photos:
+                filepath = photo["path"].lstrip("/")
+                if os.path.exists(filepath):
+                    with open(filepath, "rb") as f:
+                        photo_bytes.append(f.read())
+
+        if photo_bytes:
+            chi_result = calculate_chi_score(
+                body_photos=photo_bytes,
+                species=animal.species or "cow",
+                age_years=animal.age_years or 0,
+                breed=animal.breed or "",
+                sex=animal.sex or "",
+            )
+
+            # Update animal health score
+            animal.health_score = chi_result["chi_score"]
+            if chi_result["chi_score"] >= 80:
+                animal.health_risk_category = "low"
+            elif chi_result["chi_score"] >= 60:
+                animal.health_risk_category = "medium"
+            else:
+                animal.health_risk_category = "high"
+            await db.commit()
+    except Exception as e:
+        logger.warning(f"CHI calculation error: {e}")
+
     return {
         "animal_id": animal_id,
         "photos_uploaded": len(saved_photos),
         "total_body_photos": len(existing),
         "photos": saved_photos,
+        "chi": chi_result,
     }
+
+
+# ---------------------------------------------------------------------------
+# CHI Score Calculation (standalone endpoint)
+# ---------------------------------------------------------------------------
+@router.get("/chi-score/{animal_id}")
+async def get_chi_score(
+    animal_id: str,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """
+    Get the Cattle Health Index for an animal based on its 360-degree photos.
+    Returns CHI score (0-100), BCS, component scores, AI observations,
+    recommendations, and insurability assessment.
+    """
+    result = await db.execute(select(Animal).where(Animal.id == animal_id))
+    animal = result.scalar_one_or_none()
+    if not animal:
+        raise HTTPException(status_code=404, detail="Animal not found")
+
+    body_photos = animal.body_photos or []
+    if not body_photos:
+        return {
+            "animal_id": animal_id,
+            "chi_score": animal.health_score or 0,
+            "risk_category": animal.health_risk_category or "unknown",
+            "message": "No body photos available. Upload 360-degree photos for detailed analysis.",
+        }
+
+    # Read photos from disk
+    from ..ai.chi_engine import calculate_chi_score
+    photo_bytes = []
+    for photo in body_photos:
+        filepath = photo.get("path", "").lstrip("/")
+        if os.path.exists(filepath):
+            with open(filepath, "rb") as f:
+                photo_bytes.append(f.read())
+
+    if not photo_bytes:
+        return {
+            "animal_id": animal_id,
+            "chi_score": animal.health_score or 0,
+            "risk_category": animal.health_risk_category or "unknown",
+            "message": "Photo files not found on server.",
+        }
+
+    chi_result = calculate_chi_score(
+        body_photos=photo_bytes,
+        species=animal.species or "cow",
+        age_years=animal.age_years or 0,
+        breed=animal.breed or "",
+        sex=animal.sex or "",
+    )
+
+    # Update animal record
+    animal.health_score = chi_result["chi_score"]
+    if chi_result["chi_score"] >= 80:
+        animal.health_risk_category = "low"
+    elif chi_result["chi_score"] >= 60:
+        animal.health_risk_category = "medium"
+    else:
+        animal.health_risk_category = "high"
+    await db.commit()
+
+    return chi_result
 
 
 # ---------------------------------------------------------------------------
