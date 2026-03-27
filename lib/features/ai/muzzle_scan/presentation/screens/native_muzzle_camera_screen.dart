@@ -1,11 +1,13 @@
 import 'dart:io';
+import 'dart:math' as math;
 
+import 'package:camera/camera.dart';
+import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../../core/constants/app_colors.dart';
@@ -13,7 +15,7 @@ import '../../../../../core/constants/app_colors.dart';
 /// Data class for each captured muzzle scan
 class MuzzleScanCapture {
   final String imagePath;
-  final String angle; // front, left, right
+  final String angle;
   final String timestamp;
   final String sha256Hash;
   final String species;
@@ -42,10 +44,10 @@ class MuzzleScanCapture {
       };
 }
 
-/// Native CameraX + YOLOv8 muzzle capture screen.
-/// Uses Android PlatformView for live camera with muzzle detection overlay.
+/// Muzzle capture screen using Flutter's camera package with custom overlay.
+/// Works reliably on all Android devices.
 class NativeMuzzleCameraScreen extends ConsumerStatefulWidget {
-  final String species; // "cow" or "mule"
+  final String species;
   final Function(List<MuzzleScanCapture>)? onComplete;
 
   const NativeMuzzleCameraScreen({
@@ -60,150 +62,222 @@ class NativeMuzzleCameraScreen extends ConsumerStatefulWidget {
 }
 
 class _NativeMuzzleCameraScreenState
-    extends ConsumerState<NativeMuzzleCameraScreen> {
-  static const _channel = MethodChannel('com.xora.cattleshield/muzzle_camera');
+    extends ConsumerState<NativeMuzzleCameraScreen>
+    with WidgetsBindingObserver {
+  CameraController? _cameraController;
+  bool _isCameraReady = false;
+  bool _isCapturing = false;
+  String _statusMessage = 'Initializing camera...';
+  Position? _currentPosition;
 
   final List<MuzzleScanCapture> _captures = [];
   int _currentAngle = 0;
-  bool _isCameraReady = false;
-  bool _isCapturing = false;
-  double _confidence = 0;
-  String _statusMessage = 'Initializing camera...';
-  String _detectedClass = '';
-  Position? _currentPosition;
 
   final _angles = ['front', 'left', 'right'];
   final _angleLabels = ['Front Muzzle', 'Left Side', 'Right Side'];
   final _angleInstructions = [
-    'Face the animal directly',
-    'Move to the left side',
-    'Move to the right side',
+    'Face the animal directly — capture the nasal ridge',
+    'Move to the left side of the animal',
+    'Move to the right side of the animal',
   ];
 
   @override
   void initState() {
     super.initState();
-    _setupMethodChannel();
+    WidgetsBinding.instance.addObserver(this);
+    _initCamera();
     _getLocation();
   }
 
-  void _setupMethodChannel() {
-    _channel.setMethodCallHandler((call) async {
-      switch (call.method) {
-        case 'onCameraReady':
-          if (mounted) {
-            setState(() {
-              _isCameraReady = true;
-              _statusMessage = 'Position muzzle in the guide';
-            });
-          }
-          break;
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    final controller = _cameraController;
+    if (controller == null || !controller.value.isInitialized) return;
 
-        case 'onDetection':
-          if (mounted) {
-            final args = call.arguments as Map;
-            setState(() {
-              _confidence = (args['confidence'] as num).toDouble();
-              _statusMessage = args['message'] as String;
-              _detectedClass = args['className'] as String? ?? '';
-            });
-          }
-          break;
+    if (state == AppLifecycleState.inactive) {
+      controller.dispose();
+      setState(() => _isCameraReady = false);
+    } else if (state == AppLifecycleState.resumed) {
+      _initCamera();
+    }
+  }
 
-        case 'onPhotoCaptured':
-          if (mounted) {
-            final args = call.arguments as Map;
-            _handleCapture(args);
-          }
-          break;
-
-        case 'onError':
-          if (mounted) {
-            final error = call.arguments as String;
-            setState(() => _statusMessage = error);
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(error),
-                backgroundColor: Colors.red,
-              ),
-            );
-          }
-          break;
+  Future<void> _initCamera() async {
+    try {
+      final cameras = await availableCameras();
+      if (cameras.isEmpty) {
+        setState(() => _statusMessage = 'No camera found');
+        return;
       }
-    });
+
+      // Find back camera
+      final backCamera = cameras.firstWhere(
+        (c) => c.lensDirection == CameraLensDirection.back,
+        orElse: () => cameras.first,
+      );
+
+      final controller = CameraController(
+        backCamera,
+        ResolutionPreset.high,
+        enableAudio: false,
+        imageFormatGroup: ImageFormatGroup.jpeg,
+      );
+
+      await controller.initialize();
+
+      if (!mounted) return;
+
+      // Lock focus mode for close-up muzzle shots
+      try {
+        await controller.setFocusMode(FocusMode.auto);
+        await controller.setFlashMode(FlashMode.off);
+      } catch (_) {}
+
+      setState(() {
+        _cameraController = controller;
+        _isCameraReady = true;
+        _statusMessage = 'Position muzzle in the guide';
+      });
+    } catch (e) {
+      setState(() => _statusMessage = 'Camera error: $e');
+    }
   }
 
   Future<void> _getLocation() async {
     try {
-      final permission = await Geolocator.checkPermission();
+      var permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
-        await Geolocator.requestPermission();
+        permission = await Geolocator.requestPermission();
       }
+      if (permission == LocationPermission.deniedForever) return;
+
       _currentPosition = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high,
       );
+      if (mounted) setState(() {});
     } catch (e) {
       debugPrint('GPS error: $e');
     }
   }
 
-  void _handleCapture(Map args) {
-    final capture = MuzzleScanCapture(
-      imagePath: args['path'] as String,
-      angle: _angles[_currentAngle],
-      timestamp: args['timestamp'] as String,
-      sha256Hash: args['sha256'] as String,
-      species: args['species'] as String,
-      latitude: _currentPosition?.latitude,
-      longitude: _currentPosition?.longitude,
-    );
+  // YOLOv8 Platform Channel
+  static const _yoloChannel = MethodChannel('com.xora.cattleshield/muzzle_camera');
+  double _detectionConfidence = 0;
+  String _detectedClass = '';
+  bool _yoloAvailable = true;
 
-    setState(() {
-      _captures.add(capture);
-      _isCapturing = false;
+  /// Run YOLOv8 detection on an image file
+  Future<Map<String, dynamic>?> _runYoloDetection(String imagePath) async {
+    if (!_yoloAvailable) return null;
 
-      if (_currentAngle < 2) {
-        // Move to next angle
-        _currentAngle++;
-        _confidence = 0;
-        _statusMessage = 'Great! Now capture ${_angleLabels[_currentAngle]}';
-      } else {
-        // All 3 angles captured!
-        _statusMessage = 'All scans complete!';
+    try {
+      final result = await _yoloChannel.invokeMethod('detectMuzzle', {
+        'imagePath': imagePath,
+        'species': widget.species,
+      });
+      return Map<String, dynamic>.from(result as Map);
+    } on MissingPluginException {
+      _yoloAvailable = false;
+      return null;
+    } catch (e) {
+      debugPrint('YOLOv8 detection error: $e');
+      return null;
+    }
+  }
+
+  Future<void> _capturePhoto() async {
+    if (_isCapturing || !_isCameraReady || _cameraController == null) return;
+    if (!_cameraController!.value.isInitialized) return;
+
+    setState(() => _isCapturing = true);
+
+    try {
+      final xFile = await _cameraController!.takePicture();
+
+      // Run YOLOv8 detection on captured image
+      final detection = await _runYoloDetection(xFile.path);
+
+      if (detection != null && _yoloAvailable) {
+        final detected = detection['detected'] as bool? ?? false;
+        final confidence = (detection['confidence'] as num?)?.toDouble() ?? 0;
+        final message = detection['message'] as String? ?? '';
+        final className = detection['className'] as String? ?? '';
+
+        setState(() {
+          _detectionConfidence = confidence;
+          _detectedClass = className;
+        });
+
+        // If confidence too low, reject and ask to retake
+        if (!detected || confidence < 25) {
+          setState(() {
+            _isCapturing = false;
+            _statusMessage = 'No muzzle detected — try again. $message';
+          });
+          // Delete the bad photo
+          try { await File(xFile.path).delete(); } catch (_) {}
+          return;
+        }
       }
-    });
 
-    // Haptic feedback
-    HapticFeedback.heavyImpact();
+      // Read bytes for hash
+      final bytes = await xFile.readAsBytes();
+      final hash = sha256.convert(bytes).toString();
 
-    // If all 3 captured, return results
-    if (_captures.length == 3) {
-      Future.delayed(const Duration(seconds: 1), () {
+      // IST timestamp
+      final now = DateTime.now();
+      final istTimestamp = now.toLocal().toIso8601String();
+
+      final capture = MuzzleScanCapture(
+        imagePath: xFile.path,
+        angle: _angles[_currentAngle],
+        timestamp: istTimestamp,
+        sha256Hash: hash,
+        species: widget.species,
+        latitude: _currentPosition?.latitude,
+        longitude: _currentPosition?.longitude,
+      );
+
+      // Haptic feedback
+      HapticFeedback.heavyImpact();
+
+      setState(() {
+        _captures.add(capture);
+        _isCapturing = false;
+
+        if (_currentAngle < 2) {
+          _currentAngle++;
+          _statusMessage = _yoloAvailable && _detectedClass.isNotEmpty
+              ? 'YOLOv8: $_detectedClass (${_detectionConfidence.toStringAsFixed(0)}%) ✓ Now capture ${_angleLabels[_currentAngle]}'
+              : 'Great! Now capture ${_angleLabels[_currentAngle]}';
+        } else {
+          _statusMessage = 'All 3 scans complete!';
+        }
+      });
+
+      // If all 3 captured, return results after brief delay
+      if (_captures.length >= 3) {
+        await Future.delayed(const Duration(milliseconds: 800));
+        if (!mounted) return;
+
         if (widget.onComplete != null) {
           widget.onComplete!(_captures);
         } else {
           Navigator.of(context).pop(_captures);
         }
-      });
-    }
-  }
-
-  void _manualCapture() {
-    if (_isCapturing || !_isCameraReady) return;
-    setState(() => _isCapturing = true);
-
-    try {
-      _channel.invokeMethod('capturePhoto');
+      }
     } catch (e) {
-      setState(() => _isCapturing = false);
+      setState(() {
+        _isCapturing = false;
+        _statusMessage = 'Capture failed: $e';
+      });
     }
   }
 
   @override
   void dispose() {
-    try {
-      _channel.invokeMethod('stopCamera');
-    } catch (_) {}
+    WidgetsBinding.instance.removeObserver(this);
+    _cameraController?.dispose();
     super.dispose();
   }
 
@@ -216,50 +290,10 @@ class _NativeMuzzleCameraScreenState
       body: SafeArea(
         child: Column(
           children: [
-            // ─── Header ──────────────────────
             _buildHeader(),
-
-            // ─── Camera View ─────────────────
             Expanded(
-              child: Stack(
-                children: [
-                  // Native CameraX view with YOLOv8 overlay
-                  if (!allCaptured && !kIsWeb)
-                    AndroidView(
-                      viewType: 'muzzle-camera-view',
-                      creationParams: {'species': widget.species},
-                      creationParamsCodec: const StandardMessageCodec(),
-                    )
-                  else if (allCaptured)
-                    _buildReviewGrid()
-                  else
-                    _buildFallbackMessage(),
-
-                  // Capture animation overlays
-                  if (!_isCameraReady && !allCaptured)
-                    Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const CircularProgressIndicator(
-                            color: AppColors.secondary,
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            'Loading YOLOv8 model...',
-                            style: GoogleFonts.inter(
-                              color: Colors.white70,
-                              fontSize: 14,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                ],
-              ),
+              child: allCaptured ? _buildReviewGrid() : _buildCameraView(),
             ),
-
-            // ─── Controls ────────────────────
             _buildControls(allCaptured),
           ],
         ),
@@ -267,28 +301,72 @@ class _NativeMuzzleCameraScreenState
     );
   }
 
+  Widget _buildCameraView() {
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        // Camera preview
+        if (_isCameraReady && _cameraController != null)
+          ClipRect(
+            child: FittedBox(
+              fit: BoxFit.cover,
+              child: SizedBox(
+                width: _cameraController!.value.previewSize?.height ?? 1920,
+                height: _cameraController!.value.previewSize?.width ?? 1080,
+                child: CameraPreview(_cameraController!),
+              ),
+            ),
+          )
+        else
+          const Center(
+            child: CircularProgressIndicator(color: AppColors.secondary),
+          ),
+
+        // Muzzle guide overlay
+        if (_isCameraReady)
+          CustomPaint(
+            size: Size.infinite,
+            painter: _MuzzleOverlayPainter(
+              species: widget.species,
+              angleIndex: _currentAngle,
+            ),
+          ),
+
+        // Status text overlay
+        if (!_isCameraReady)
+          Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const CircularProgressIndicator(color: AppColors.secondary),
+                const SizedBox(height: 16),
+                Text(
+                  _statusMessage,
+                  style: GoogleFonts.inter(color: Colors.white70, fontSize: 14),
+                ),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+
   Widget _buildHeader() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: BoxDecoration(
         color: Colors.black.withValues(alpha: 0.8),
         border: Border(
-          bottom: BorderSide(
-            color: AppColors.secondary.withValues(alpha: 0.3),
-          ),
+          bottom: BorderSide(color: AppColors.secondary.withValues(alpha: 0.3)),
         ),
       ),
       child: Row(
         children: [
-          // Close button
           GestureDetector(
             onTap: () => Navigator.of(context).pop(),
             child: const Icon(Icons.close, color: Colors.white, size: 24),
           ),
-
           const SizedBox(width: 12),
-
-          // Species badge
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
@@ -298,11 +376,7 @@ class _NativeMuzzleCameraScreenState
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(
-                  widget.species == 'mule' ? Icons.pets : Icons.pets,
-                  color: AppColors.secondary,
-                  size: 16,
-                ),
+                Icon(Icons.pets, color: AppColors.secondary, size: 16),
                 const SizedBox(width: 4),
                 Text(
                   widget.species == 'mule' ? 'Mule' : 'Cow / Buffalo',
@@ -315,18 +389,13 @@ class _NativeMuzzleCameraScreenState
               ],
             ),
           ),
-
           const Spacer(),
-
-          // YOLOv8 badge
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
             decoration: BoxDecoration(
               color: Colors.blue.withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(
-                color: Colors.blue.withValues(alpha: 0.4),
-              ),
+              border: Border.all(color: Colors.blue.withValues(alpha: 0.4)),
             ),
             child: Text(
               'YOLOv8',
@@ -337,10 +406,7 @@ class _NativeMuzzleCameraScreenState
               ),
             ),
           ),
-
           const SizedBox(width: 12),
-
-          // Progress
           Text(
             '${_currentAngle + 1}/3',
             style: GoogleFonts.inter(
@@ -356,19 +422,17 @@ class _NativeMuzzleCameraScreenState
 
   Widget _buildControls(bool allCaptured) {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.black.withValues(alpha: 0.9),
         border: Border(
-          top: BorderSide(
-            color: AppColors.secondary.withValues(alpha: 0.2),
-          ),
+          top: BorderSide(color: AppColors.secondary.withValues(alpha: 0.2)),
         ),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Capture progress dots
+          // Progress dots
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: List.generate(3, (i) {
@@ -389,10 +453,8 @@ class _NativeMuzzleCameraScreenState
               );
             }),
           ),
+          const SizedBox(height: 10),
 
-          const SizedBox(height: 12),
-
-          // Angle label
           if (!allCaptured) ...[
             Text(
               'Scan ${_currentAngle + 1}/3: ${_angleLabels[_currentAngle]}',
@@ -405,12 +467,10 @@ class _NativeMuzzleCameraScreenState
             const SizedBox(height: 4),
             Text(
               _angleInstructions[_currentAngle],
-              style: GoogleFonts.inter(
-                color: Colors.white60,
-                fontSize: 13,
-              ),
+              style: GoogleFonts.inter(color: Colors.white60, fontSize: 12),
+              textAlign: TextAlign.center,
             ),
-          ] else ...[
+          ] else
             Text(
               'All 3 scans captured!',
               style: GoogleFonts.inter(
@@ -419,53 +479,58 @@ class _NativeMuzzleCameraScreenState
                 fontWeight: FontWeight.w700,
               ),
             ),
-          ],
 
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
 
-          // Detection status
           Text(
             _statusMessage,
-            style: GoogleFonts.inter(
-              color: _confidence > 60 ? AppColors.secondary : Colors.white54,
-              fontSize: 12,
-            ),
+            style: GoogleFonts.inter(color: Colors.white54, fontSize: 11),
             textAlign: TextAlign.center,
           ),
 
-          if (_detectedClass.isNotEmpty)
-            Text(
-              'Detected: $_detectedClass (${_confidence.toInt()}%)',
-              style: GoogleFonts.robotoMono(
-                color: Colors.blue[300],
-                fontSize: 11,
-              ),
-            ),
-
-          const SizedBox(height: 8),
-
-          // Confidence bar
-          if (!allCaptured)
-            ClipRRect(
-              borderRadius: BorderRadius.circular(4),
-              child: LinearProgressIndicator(
-                value: (_confidence / 100).clamp(0, 1),
-                backgroundColor: Colors.grey[800],
-                valueColor: AlwaysStoppedAnimation<Color>(
-                  _confidence > 70
-                      ? AppColors.secondary
-                      : _confidence > 40
-                          ? Colors.orange
-                          : Colors.red,
+          // YOLOv8 detection info
+          if (_detectionConfidence > 0 && _yoloAvailable) ...[
+            const SizedBox(height: 6),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    'YOLOv8',
+                    style: GoogleFonts.robotoMono(
+                      color: Colors.blue[300],
+                      fontSize: 9,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                 ),
-                minHeight: 6,
-              ),
+                const SizedBox(width: 8),
+                Text(
+                  '$_detectedClass ${_detectionConfidence.toStringAsFixed(0)}%',
+                  style: GoogleFonts.inter(
+                    color: _detectionConfidence > 50 ? Colors.green[400] : Colors.orange,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Icon(
+                  _detectionConfidence > 50 ? Icons.check_circle : Icons.warning,
+                  color: _detectionConfidence > 50 ? Colors.green[400] : Colors.orange,
+                  size: 14,
+                ),
+              ],
             ),
+          ],
 
-          const SizedBox(height: 16),
-
-          // GPS info
-          if (_currentPosition != null)
+          // GPS
+          if (_currentPosition != null) ...[
+            const SizedBox(height: 4),
             Text(
               'GPS: ${_currentPosition!.latitude.toStringAsFixed(4)}, ${_currentPosition!.longitude.toStringAsFixed(4)}',
               style: GoogleFonts.robotoMono(
@@ -473,13 +538,14 @@ class _NativeMuzzleCameraScreenState
                 fontSize: 11,
               ),
             ),
+          ],
 
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
 
-          // Manual capture button
+          // Capture button
           if (!allCaptured)
             GestureDetector(
-              onTap: _isCameraReady ? _manualCapture : null,
+              onTap: _isCameraReady && !_isCapturing ? _capturePhoto : null,
               child: Container(
                 width: 70,
                 height: 70,
@@ -495,26 +561,30 @@ class _NativeMuzzleCameraScreenState
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     color: _isCapturing
-                        ? Colors.red
+                        ? Colors.grey
                         : _isCameraReady
-                            ? Colors.white
+                            ? Colors.red
                             : Colors.grey[700],
                   ),
+                  child: _isCapturing
+                      ? const Padding(
+                          padding: EdgeInsets.all(18),
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : null,
                 ),
               ),
             ),
 
           if (!allCaptured)
             Padding(
-              padding: const EdgeInsets.only(top: 8),
+              padding: const EdgeInsets.only(top: 6),
               child: Text(
-                _isCameraReady
-                    ? 'Auto-captures when muzzle detected'
-                    : 'Camera initializing...',
-                style: GoogleFonts.inter(
-                  color: Colors.white38,
-                  fontSize: 11,
-                ),
+                'Tap to capture',
+                style: GoogleFonts.inter(color: Colors.white38, fontSize: 11),
               ),
             ),
         ],
@@ -523,84 +593,152 @@ class _NativeMuzzleCameraScreenState
   }
 
   Widget _buildReviewGrid() {
-    return Container(
-      color: Colors.black,
-      child: GridView.count(
-        crossAxisCount: 2,
-        padding: const EdgeInsets.all(8),
-        mainAxisSpacing: 8,
-        crossAxisSpacing: 8,
-        children: _captures.map((capture) {
-          return ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                Image.file(
-                  File(capture.imagePath),
-                  fit: BoxFit.cover,
-                ),
-                Positioned(
-                  bottom: 0,
-                  left: 0,
-                  right: 0,
-                  child: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          Colors.transparent,
-                          Colors.black.withValues(alpha: 0.8),
-                        ],
-                      ),
+    return GridView.count(
+      crossAxisCount: 2,
+      padding: const EdgeInsets.all(8),
+      mainAxisSpacing: 8,
+      crossAxisSpacing: 8,
+      children: _captures.map((capture) {
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              Image.file(File(capture.imagePath), fit: BoxFit.cover),
+              Positioned(
+                bottom: 0,
+                left: 0,
+                right: 0,
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [Colors.transparent, Colors.black87],
                     ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          capture.angle.toUpperCase(),
-                          style: GoogleFonts.inter(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 13,
-                          ),
-                        ),
-                        Text(
-                          capture.timestamp.substring(11, 19),
-                          style: GoogleFonts.robotoMono(
-                            color: Colors.white60,
-                            fontSize: 10,
-                          ),
-                        ),
-                      ],
+                  ),
+                  child: Text(
+                    capture.angle.toUpperCase(),
+                    style: GoogleFonts.inter(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 13,
                     ),
                   ),
                 ),
-                Positioned(
-                  top: 8,
-                  right: 8,
-                  child: Icon(
-                    Icons.check_circle,
-                    color: AppColors.secondary,
-                    size: 24,
-                  ),
-                ),
-              ],
-            ),
-          );
-        }).toList(),
-      ),
+              ),
+              Positioned(
+                top: 8,
+                right: 8,
+                child: Icon(Icons.check_circle, color: AppColors.secondary, size: 24),
+              ),
+            ],
+          ),
+        );
+      }).toList(),
     );
+  }
+}
+
+/// Custom painter for the muzzle guide overlay.
+class _MuzzleOverlayPainter extends CustomPainter {
+  final String species;
+  final int angleIndex;
+
+  _MuzzleOverlayPainter({required this.species, required this.angleIndex});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final w = size.width;
+    final h = size.height;
+    if (w == 0 || h == 0) return;
+
+    // Guide zone
+    final guideRect = species == 'mule'
+        ? Rect.fromLTRB(w * 0.15, h * 0.25, w * 0.85, h * 0.65)
+        : Rect.fromLTRB(w * 0.2, h * 0.28, w * 0.8, h * 0.62);
+
+    // Dim outside guide
+    final dimPaint = Paint()..color = Colors.black.withValues(alpha: 0.5);
+    final guidePath = Path();
+    if (species == 'mule') {
+      guidePath.addRRect(RRect.fromRectAndRadius(guideRect, const Radius.circular(40)));
+    } else {
+      guidePath.addOval(guideRect);
+    }
+
+    // Draw dim overlay with cutout
+    canvas.save();
+    canvas.clipPath(guidePath, doAntiAlias: true);
+    canvas.restore();
+
+    // Full screen dim
+    final fullPath = Path()..addRect(Rect.fromLTWH(0, 0, w, h));
+    final combinedPath = Path.combine(PathOperation.difference, fullPath, guidePath);
+    canvas.drawPath(combinedPath, dimPaint);
+
+    // Guide border
+    final guidePaint = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.5;
+
+    if (species == 'mule') {
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(guideRect, const Radius.circular(40)),
+        guidePaint,
+      );
+    } else {
+      canvas.drawOval(guideRect, guidePaint);
+    }
+
+    // Corner markers
+    final cornerPaint = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 4;
+    const len = 25.0;
+
+    canvas.drawLine(Offset(guideRect.left, guideRect.top), Offset(guideRect.left + len, guideRect.top), cornerPaint);
+    canvas.drawLine(Offset(guideRect.left, guideRect.top), Offset(guideRect.left, guideRect.top + len), cornerPaint);
+
+    canvas.drawLine(Offset(guideRect.right - len, guideRect.top), Offset(guideRect.right, guideRect.top), cornerPaint);
+    canvas.drawLine(Offset(guideRect.right, guideRect.top), Offset(guideRect.right, guideRect.top + len), cornerPaint);
+
+    canvas.drawLine(Offset(guideRect.left, guideRect.bottom), Offset(guideRect.left + len, guideRect.bottom), cornerPaint);
+    canvas.drawLine(Offset(guideRect.left, guideRect.bottom - len), Offset(guideRect.left, guideRect.bottom), cornerPaint);
+
+    canvas.drawLine(Offset(guideRect.right - len, guideRect.bottom), Offset(guideRect.right, guideRect.bottom), cornerPaint);
+    canvas.drawLine(Offset(guideRect.right, guideRect.bottom - len), Offset(guideRect.right, guideRect.bottom), cornerPaint);
+
+    // Guide label
+    final labelText = species == 'mule' ? 'Mule Nose + Lip Area' : 'Cow Muzzle (Nasal Ridge)';
+    final textPainter = TextPainter(
+      text: TextSpan(
+        text: labelText,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 16,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    textPainter.paint(canvas, Offset((w - textPainter.width) / 2, guideRect.top - 35));
+
+    // Bottom instruction
+    final instructPainter = TextPainter(
+      text: const TextSpan(
+        text: 'Position muzzle in the guide',
+        style: TextStyle(color: Colors.white70, fontSize: 13),
+      ),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    instructPainter.paint(canvas, Offset((w - instructPainter.width) / 2, guideRect.bottom + 15));
   }
 
-  Widget _buildFallbackMessage() {
-    return Center(
-      child: Text(
-        'Native camera only available on Android',
-        style: GoogleFonts.inter(color: Colors.white54),
-      ),
-    );
-  }
+  @override
+  bool shouldRepaint(covariant _MuzzleOverlayPainter old) =>
+      old.species != species || old.angleIndex != angleIndex;
 }

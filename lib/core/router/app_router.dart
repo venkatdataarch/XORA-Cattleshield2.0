@@ -136,27 +136,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 builder: (context, state) => const FarmerDashboardScreen(),
                 routes: [
                   GoRoute(
-                    path: 'proposals',
-                    name: RouteNames.proposalList,
-                    builder: (context, state) => const ProposalListScreen(),
-                    routes: [
-                      GoRoute(
-                        path: 'new/:animalId',
-                        name: RouteNames.proposalForm,
-                        builder: (context, state) => ProposalFormScreen(
-                          animalId: state.pathParameters['animalId'] ?? '',
-                        ),
-                      ),
-                      GoRoute(
-                        path: ':id',
-                        name: RouteNames.proposalDetail,
-                        builder: (context, state) => ProposalDetailScreen(
-                          proposalId: state.pathParameters['id'] ?? '',
-                        ),
-                      ),
-                    ],
-                  ),
-                  GoRoute(
                     path: 'claims',
                     name: RouteNames.claimList,
                     builder: (context, state) => const ClaimListScreen(),
@@ -210,6 +189,25 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                     name: RouteNames.animalDetail,
                     builder: (context, state) => AnimalDetailScreen(
                       animalId: state.pathParameters['id'] ?? '',
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          // Proposals (tracking)
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/farmer/proposals',
+                name: 'farmer-proposals',
+                builder: (context, state) => const ProposalListScreen(),
+                routes: [
+                  GoRoute(
+                    path: ':id',
+                    name: 'farmer-proposal-detail',
+                    builder: (context, state) => ProposalDetailScreen(
+                      proposalId: state.pathParameters['id'] ?? '',
                     ),
                   ),
                 ],
@@ -482,6 +480,7 @@ class _FarmerScaffold extends StatelessWidget {
         items: const [
           _NavItem(icon: Icons.home_outlined, activeIcon: Icons.home, label: 'Home'),
           _NavItem(icon: Icons.pets_outlined, activeIcon: Icons.pets, label: 'Animals'),
+          _NavItem(icon: Icons.track_changes_outlined, activeIcon: Icons.track_changes, label: 'Proposals'),
           _NavItem(icon: Icons.policy_outlined, activeIcon: Icons.policy, label: 'Policies'),
           _NavItem(icon: Icons.person_outline, activeIcon: Icons.person, label: 'Profile'),
         ],

@@ -7,7 +7,7 @@ plugins {
 
 android {
     namespace = "com.xora.cattleshield"
-    compileSdk = 34
+    compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
@@ -49,6 +49,9 @@ dependencies {
 
     // ONNX Runtime for YOLOv8 inference
     implementation("com.microsoft.onnxruntime:onnxruntime-android:1.17.0")
+
+    // Guava for ListenableFuture (required by CameraX)
+    implementation("com.google.guava:guava:32.1.3-android")
 
     // AndroidX
     implementation("androidx.core:core-ktx:1.12.0")

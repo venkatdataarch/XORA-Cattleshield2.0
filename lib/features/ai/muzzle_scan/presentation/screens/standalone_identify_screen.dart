@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -8,6 +9,7 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../../../../core/constants/app_colors.dart';
 import '../../../../../core/di/providers.dart';
+import 'native_muzzle_camera_screen.dart';
 
 /// Standalone muzzle identification screen.
 /// Captures a muzzle image and searches the database for a matching animal.
@@ -49,24 +51,47 @@ class _StandaloneIdentifyScreenState
   }
 
   Future<void> _captureImage() async {
-    try {
-      final image = await _picker.pickImage(
-        source: ImageSource.camera,
-        preferredCameraDevice: CameraDevice.rear,
-        imageQuality: 85,
-        maxWidth: 1200,
+    if (!kIsWeb) {
+      // Use muzzle camera with watermark overlay (captures only 1 angle for identification)
+      final result = await Navigator.of(context).push<List<MuzzleScanCapture>>(
+        MaterialPageRoute(
+          builder: (_) => NativeMuzzleCameraScreen(
+            species: _selectedSpecies,
+            onComplete: (captures) {
+              Navigator.of(context).pop(captures);
+            },
+          ),
+        ),
       );
-      if (image != null && mounted) {
+
+      if (result != null && result.isNotEmpty && mounted) {
+        // Use the first capture for identification
         setState(() {
-          _capturedImage = image;
+          _capturedImage = XFile(result.first.imagePath);
           _result = null;
         });
       }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Camera error: $e')),
+    } else {
+      // Fallback for web: use image_picker
+      try {
+        final image = await _picker.pickImage(
+          source: ImageSource.camera,
+          preferredCameraDevice: CameraDevice.rear,
+          imageQuality: 85,
+          maxWidth: 1200,
         );
+        if (image != null && mounted) {
+          setState(() {
+            _capturedImage = image;
+            _result = null;
+          });
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Camera error: $e')),
+          );
+        }
       }
     }
   }

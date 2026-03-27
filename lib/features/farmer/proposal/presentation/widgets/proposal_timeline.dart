@@ -53,24 +53,27 @@ class ProposalTimeline extends StatelessWidget {
     };
 
     final currentIndex = statusOrder[status] ?? 0;
+    final isVetRejected = status == ProposalStatus.vetRejected;
+    final statusStr = proposal.status.toString().split('.').last;
+    final isUiicRejected = statusStr == 'uiicRejected' || statusStr == 'uiic_rejected';
 
     final steps = <_TimelineStep>[
       _TimelineStep(
-        label: 'Draft Created',
+        label: 'Proposal Created',
         icon: Icons.edit_note,
         isCompleted: currentIndex > 0,
         isCurrent: currentIndex == 0,
         date: proposal.createdAt,
       ),
       _TimelineStep(
-        label: 'Submitted',
+        label: 'Submitted for Review',
         icon: Icons.send,
         isCompleted: currentIndex > 1,
         isCurrent: currentIndex == 1,
         date: proposal.submittedAt,
       ),
       _TimelineStep(
-        label: 'Vet Review',
+        label: 'Vet Doctor Review',
         icon: Icons.medical_services,
         isCompleted: currentIndex > 2,
         isCurrent: currentIndex == 2,
@@ -78,16 +81,38 @@ class ProposalTimeline extends StatelessWidget {
       ),
     ];
 
-    if (isRejected) {
+    if (isVetRejected) {
       steps.add(
         _TimelineStep(
-          label: 'Vet Rejected',
+          label: 'Rejected by Vet Doctor',
           icon: Icons.cancel,
           isCurrent: true,
           isRejected: true,
           date: proposal.vetReviewedAt,
         ),
       );
+    } else if (isUiicRejected) {
+      steps.addAll([
+        _TimelineStep(
+          label: 'Vet Approved',
+          icon: Icons.check_circle,
+          isCompleted: true,
+          date: proposal.vetReviewedAt,
+        ),
+        _TimelineStep(
+          label: 'UIIC Admin Review',
+          icon: Icons.business,
+          isCompleted: true,
+          date: proposal.uiicSentAt,
+        ),
+        _TimelineStep(
+          label: 'Rejected by UIIC Admin',
+          icon: Icons.cancel,
+          isCurrent: true,
+          isRejected: true,
+          date: proposal.uiicSentAt,
+        ),
+      ]);
     } else {
       steps.addAll([
         _TimelineStep(
@@ -98,14 +123,14 @@ class ProposalTimeline extends StatelessWidget {
           date: currentIndex >= 3 ? proposal.vetReviewedAt : null,
         ),
         _TimelineStep(
-          label: 'Sent to UIIC',
+          label: 'UIIC Admin Review',
           icon: Icons.business,
           isCompleted: currentIndex > 4,
           isCurrent: currentIndex == 4,
           date: proposal.uiicSentAt,
         ),
         _TimelineStep(
-          label: 'Policy Created',
+          label: 'Policy Issued',
           icon: Icons.verified,
           isCompleted: currentIndex >= 5,
           isCurrent: currentIndex == 5,
