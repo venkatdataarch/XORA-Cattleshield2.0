@@ -58,6 +58,7 @@ dependencies:
 
   # Crypto for SHA-256 hashing
   crypto: ^3.0.6
+  camerawesome: ^2.5.0
 
 dev_dependencies:
   flutter_test:

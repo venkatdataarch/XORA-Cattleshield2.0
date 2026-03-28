@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'dart:math' as math;
 
-import 'package:camera/camera.dart';
+import 'package:camerawesome/camerawesome_plugin.dart';
 import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -9,7 +9,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:permission_handler/permission_handler.dart';
 
 import '../../../../../core/constants/app_colors.dart';
 
@@ -45,8 +44,8 @@ class MuzzleScanCapture {
       };
 }
 
-/// Muzzle capture screen using Flutter's camera package with custom overlay.
-/// Works reliably on all Android devices.
+/// Production-grade muzzle capture screen using CameraAwesome (CameraX backend).
+/// 3-angle sequential capture with muzzle guide overlay.
 class NativeMuzzleCameraScreen extends ConsumerStatefulWidget {
   final String species;
   final Function(List<MuzzleScanCapture>)? onComplete;
@@ -63,16 +62,12 @@ class NativeMuzzleCameraScreen extends ConsumerStatefulWidget {
 }
 
 class _NativeMuzzleCameraScreenState
-    extends ConsumerState<NativeMuzzleCameraScreen>
-    with WidgetsBindingObserver {
-  CameraController? _cameraController;
-  bool _isCameraReady = false;
-  bool _isCapturing = false;
-  String _statusMessage = 'Initializing camera...';
+    extends ConsumerState<NativeMuzzleCameraScreen> {
   Position? _currentPosition;
-
   final List<MuzzleScanCapture> _captures = [];
   int _currentAngle = 0;
+  bool _isProcessing = false;
+  String _statusMessage = 'Position muzzle in the guide';
 
   final _angles = ['front', 'left', 'right'];
   final _angleLabels = ['Front Muzzle', 'Left Side', 'Right Side'];
@@ -85,132 +80,7 @@ class _NativeMuzzleCameraScreenState
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addObserver(this);
-    _initCamera();
     _getLocation();
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (!mounted) return;
-    final controller = _cameraController;
-    if (controller == null || !controller.value.isInitialized) return;
-
-    if (state == AppLifecycleState.inactive) {
-      setState(() => _isCameraReady = false);
-      // Dispose after setState to avoid rebuild issues
-      Future.microtask(() {
-        controller.dispose();
-        _cameraController = null;
-      });
-    } else if (state == AppLifecycleState.resumed) {
-      _initCamera();
-    }
-  }
-
-  Future<void> _initCamera() async {
-    try {
-      // Step 1: Request camera permission explicitly
-      var cameraStatus = await Permission.camera.status;
-      debugPrint('Camera permission status: $cameraStatus');
-
-      if (cameraStatus.isDenied) {
-        cameraStatus = await Permission.camera.request();
-        debugPrint('Camera permission after request: $cameraStatus');
-      }
-
-      if (cameraStatus.isPermanentlyDenied) {
-        if (!mounted) return;
-        setState(() => _statusMessage = 'Camera permission denied');
-        _showPermissionDeniedDialog();
-        return;
-      }
-
-      if (!cameraStatus.isGranted) {
-        if (!mounted) return;
-        setState(() => _statusMessage = 'Camera permission required');
-        return;
-      }
-
-      // Step 2: Get available cameras
-      final cameras = await availableCameras();
-      if (cameras.isEmpty) {
-        if (mounted) setState(() => _statusMessage = 'No camera found');
-        return;
-      }
-
-      // Find back camera
-      final backCamera = cameras.firstWhere(
-        (c) => c.lensDirection == CameraLensDirection.back,
-        orElse: () => cameras.first,
-      );
-
-      // Step 3: Initialize camera controller
-      final controller = CameraController(
-        backCamera,
-        ResolutionPreset.high,
-        enableAudio: false,
-        imageFormatGroup: ImageFormatGroup.jpeg,
-      );
-
-      await controller.initialize();
-
-      if (!mounted) {
-        controller.dispose();
-        return;
-      }
-
-      // Lock focus mode for close-up muzzle shots
-      try {
-        await controller.setFocusMode(FocusMode.auto);
-        await controller.setFlashMode(FlashMode.off);
-      } catch (_) {}
-
-      setState(() {
-        _cameraController = controller;
-        _isCameraReady = true;
-        _statusMessage = 'Position muzzle in the guide';
-      });
-    } catch (e) {
-      debugPrint('Camera init error: $e');
-      if (mounted) {
-        setState(() => _statusMessage = 'Camera error — tap to retry');
-      }
-    }
-  }
-
-  void _showPermissionDeniedDialog() {
-    if (!mounted) return;
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Camera Permission Required'),
-        content: const Text(
-          'CattleShield needs camera access to scan animal muzzles. '
-          'Please grant camera permission in your phone settings.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              Navigator.pop(context); // Close camera screen
-            },
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              openAppSettings();
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Open Settings'),
-          ),
-        ],
-      ),
-    );
   }
 
   Future<void> _getLocation() async {
@@ -230,121 +100,22 @@ class _NativeMuzzleCameraScreenState
     }
   }
 
-  // YOLOv8 Platform Channel — detection done server-side after upload
-  static const _yoloChannel = MethodChannel('com.xora.cattleshield/muzzle_camera');
-  double _detectionConfidence = 0;
-  String _detectedClass = '';
-  bool _yoloAvailable = false; // Disabled on-device — server-side detection only
-
-  /// Run YOLOv8 detection on an image file (non-blocking, never crashes)
-  Future<Map<String, dynamic>?> _runYoloDetection(String imagePath) async {
-    if (!_yoloAvailable) return null;
+  Future<void> _onPhotoTaken(String filePath) async {
+    if (_isProcessing) return;
+    setState(() => _isProcessing = true);
 
     try {
-      final result = await _yoloChannel.invokeMethod('detectMuzzle', {
-        'imagePath': imagePath,
-        'species': widget.species,
-      });
-      if (result == null) return null;
-      return Map<String, dynamic>.from(result as Map);
-    } on MissingPluginException {
-      // Platform channel not registered (e.g., on web or emulator)
-      _yoloAvailable = false;
-      debugPrint('YOLOv8: MissingPluginException — disabling');
-      return null;
-    } on PlatformException catch (e) {
-      // Native side error (ONNX model failed, bitmap decode error, etc.)
-      debugPrint('YOLOv8 PlatformException: ${e.message}');
-      // Don't disable — might work on next frame
-      return null;
-    } catch (e) {
-      debugPrint('YOLOv8 detection error: $e');
-      return null;
-    }
-  }
-
-  Future<void> _capturePhoto() async {
-    if (_isCapturing) return;
-    if (_cameraController == null || !_isCameraReady) {
-      if (mounted) {
-        setState(() => _statusMessage = 'Camera not ready — please wait');
-      }
-      return;
-    }
-    if (!_cameraController!.value.isInitialized) {
-      if (mounted) {
-        setState(() => _statusMessage = 'Camera initializing...');
-      }
-      return;
-    }
-
-    setState(() => _isCapturing = true);
-
-    try {
-      // Take picture with safety check
-      final XFile xFile;
-      try {
-        xFile = await _cameraController!.takePicture();
-      } catch (cameraError) {
-        debugPrint('Camera takePicture error: $cameraError');
-        if (mounted) {
-          setState(() {
-            _isCapturing = false;
-            _statusMessage = 'Camera error — tap to retry';
-          });
-        }
+      final file = File(filePath);
+      if (!await file.exists()) {
+        setState(() {
+          _isProcessing = false;
+          _statusMessage = 'Photo not saved — try again';
+        });
         return;
       }
-
-      // Verify file exists
-      if (!await File(xFile.path).exists()) {
-        if (mounted) {
-          setState(() {
-            _isCapturing = false;
-            _statusMessage = 'Photo not saved — tap to retry';
-          });
-        }
-        return;
-      }
-
-      // Check if still mounted after async gap
-      if (!mounted) return;
-
-      // Run YOLOv8 detection (optional — never crashes the app)
-      try {
-        final detection = await _runYoloDetection(xFile.path);
-
-        if (mounted && detection != null && _yoloAvailable) {
-          final detected = detection['detected'] as bool? ?? false;
-          final confidence = (detection['confidence'] as num?)?.toDouble() ?? 0;
-          final message = detection['message'] as String? ?? '';
-          final className = detection['className'] as String? ?? '';
-
-          setState(() {
-            _detectionConfidence = confidence;
-            _detectedClass = className;
-          });
-
-          // If confidence too low, reject and ask to retake
-          if (!detected || confidence < 25) {
-            setState(() {
-              _isCapturing = false;
-              _statusMessage = 'No muzzle detected — try again. $message';
-            });
-            // Delete the bad photo safely
-            try { await File(xFile.path).delete(); } catch (_) {}
-            return;
-          }
-        }
-      } catch (yoloError) {
-        // YOLOv8 failed — continue without detection (still save the photo)
-        debugPrint('YOLOv8 post-capture error (ignored): $yoloError');
-      }
-
-      if (!mounted) return;
 
       // Read bytes for hash
-      final bytes = await File(xFile.path).readAsBytes();
+      final bytes = await file.readAsBytes();
       final hash = sha256.convert(bytes).toString();
 
       // IST timestamp
@@ -352,7 +123,7 @@ class _NativeMuzzleCameraScreenState
       final istTimestamp = now.toLocal().toIso8601String();
 
       final capture = MuzzleScanCapture(
-        imagePath: xFile.path,
+        imagePath: filePath,
         angle: _angles[_currentAngle],
         timestamp: istTimestamp,
         sha256Hash: hash,
@@ -366,19 +137,17 @@ class _NativeMuzzleCameraScreenState
 
       setState(() {
         _captures.add(capture);
-        _isCapturing = false;
+        _isProcessing = false;
 
         if (_currentAngle < 2) {
           _currentAngle++;
-          _statusMessage = _yoloAvailable && _detectedClass.isNotEmpty
-              ? 'YOLOv8: $_detectedClass (${_detectionConfidence.toStringAsFixed(0)}%) ✓ Now capture ${_angleLabels[_currentAngle]}'
-              : 'Great! Now capture ${_angleLabels[_currentAngle]}';
+          _statusMessage = 'Great! Now capture ${_angleLabels[_currentAngle]}';
         } else {
           _statusMessage = 'All 3 scans complete!';
         }
       });
 
-      // If all 3 captured, return results after brief delay
+      // If all 3 captured, return results
       if (_captures.length >= 3) {
         await Future.delayed(const Duration(milliseconds: 800));
         if (!mounted) return;
@@ -390,28 +159,34 @@ class _NativeMuzzleCameraScreenState
         }
       }
     } catch (e) {
-      setState(() {
-        _isCapturing = false;
-        _statusMessage = 'Capture failed: $e';
-      });
+      debugPrint('Capture processing error: $e');
+      if (mounted) {
+        setState(() {
+          _isProcessing = false;
+          _statusMessage = 'Error processing — try again';
+        });
+      }
     }
-  }
-
-  @override
-  void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    try {
-      _cameraController?.dispose();
-    } catch (e) {
-      debugPrint('Camera dispose error: $e');
-    }
-    _cameraController = null;
-    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final allCaptured = _captures.length >= 3;
+
+    if (allCaptured) {
+      return Scaffold(
+        backgroundColor: Colors.black,
+        body: SafeArea(
+          child: Column(
+            children: [
+              _buildHeader(),
+              Expanded(child: _buildReviewGrid()),
+              _buildCompletedControls(),
+            ],
+          ),
+        ),
+      );
+    }
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -420,62 +195,93 @@ class _NativeMuzzleCameraScreenState
           children: [
             _buildHeader(),
             Expanded(
-              child: allCaptured ? _buildReviewGrid() : _buildCameraView(),
+              child: CameraAwesomeBuilder.custom(
+                saveConfig: SaveConfig.photo(),
+                sensorConfig: SensorConfig.single(
+                  sensor: Sensor.position(SensorPosition.back),
+                  aspectRatio: CameraAspectRatios.ratio_4_3,
+                ),
+                builder: (cameraState, preview) {
+                  return Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      // Muzzle guide overlay on top of camera preview
+                      CustomPaint(
+                        painter: _MuzzleOverlayPainter(
+                          species: widget.species,
+                          angleIndex: _currentAngle,
+                        ),
+                      ),
+                      // Capture button centered at bottom of preview
+                      Positioned(
+                        bottom: 20,
+                        left: 0,
+                        right: 0,
+                        child: Center(
+                          child: GestureDetector(
+                            onTap: _isProcessing
+                                ? null
+                                : () {
+                                    cameraState.when(
+                                      onPhotoMode: (photoState) {
+                                        photoState.takePhoto().then((request) {
+                                          request.when(
+                                            single: (single) {
+                                              if (single.file != null) {
+                                                _onPhotoTaken(single.file!.path);
+                                              }
+                                            },
+                                          );
+                                        });
+                                      },
+                                    );
+                                  },
+                            child: Container(
+                              width: 72,
+                              height: 72,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(color: Colors.white, width: 4),
+                              ),
+                              child: Container(
+                                margin: const EdgeInsets.all(4),
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: _isProcessing ? Colors.grey : Colors.red,
+                                ),
+                                child: _isProcessing
+                                    ? const Padding(
+                                        padding: EdgeInsets.all(18),
+                                        child: CircularProgressIndicator(
+                                          color: Colors.white,
+                                          strokeWidth: 2,
+                                        ),
+                                      )
+                                    : null,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      // Processing overlay
+                      if (_isProcessing)
+                        Container(
+                          color: Colors.black38,
+                          child: const Center(
+                            child: CircularProgressIndicator(
+                              color: AppColors.secondary,
+                            ),
+                          ),
+                        ),
+                    ],
+                  );
+                },
+              ),
             ),
-            _buildControls(allCaptured),
+            _buildControls(),
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildCameraView() {
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        // Camera preview
-        if (_isCameraReady && _cameraController != null)
-          ClipRect(
-            child: FittedBox(
-              fit: BoxFit.cover,
-              child: SizedBox(
-                width: _cameraController!.value.previewSize?.height ?? 1920,
-                height: _cameraController!.value.previewSize?.width ?? 1080,
-                child: CameraPreview(_cameraController!),
-              ),
-            ),
-          )
-        else
-          const Center(
-            child: CircularProgressIndicator(color: AppColors.secondary),
-          ),
-
-        // Muzzle guide overlay
-        if (_isCameraReady)
-          CustomPaint(
-            size: Size.infinite,
-            painter: _MuzzleOverlayPainter(
-              species: widget.species,
-              angleIndex: _currentAngle,
-            ),
-          ),
-
-        // Status text overlay
-        if (!_isCameraReady)
-          Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const CircularProgressIndicator(color: AppColors.secondary),
-                const SizedBox(height: 16),
-                Text(
-                  _statusMessage,
-                  style: GoogleFonts.inter(color: Colors.white70, fontSize: 14),
-                ),
-              ],
-            ),
-          ),
-      ],
     );
   }
 
@@ -483,7 +289,7 @@ class _NativeMuzzleCameraScreenState
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.8),
+        color: Colors.black.withValues(alpha: 0.9),
         border: Border(
           bottom: BorderSide(color: AppColors.secondary.withValues(alpha: 0.3)),
         ),
@@ -521,14 +327,14 @@ class _NativeMuzzleCameraScreenState
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
             decoration: BoxDecoration(
-              color: Colors.blue.withValues(alpha: 0.2),
+              color: Colors.green.withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.blue.withValues(alpha: 0.4)),
+              border: Border.all(color: Colors.green.withValues(alpha: 0.4)),
             ),
             child: Text(
-              'YOLOv8',
+              'CameraX',
               style: GoogleFonts.robotoMono(
-                color: Colors.blue[300],
+                color: Colors.green[300],
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
               ),
@@ -548,7 +354,7 @@ class _NativeMuzzleCameraScreenState
     );
   }
 
-  Widget _buildControls(bool allCaptured) {
+  Widget _buildControls() {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -565,7 +371,7 @@ class _NativeMuzzleCameraScreenState
             mainAxisAlignment: MainAxisAlignment.center,
             children: List.generate(3, (i) {
               final captured = i < _captures.length;
-              final active = i == _currentAngle && !allCaptured;
+              final active = i == _currentAngle;
               return Container(
                 width: captured ? 36 : 12,
                 height: 12,
@@ -583,78 +389,26 @@ class _NativeMuzzleCameraScreenState
           ),
           const SizedBox(height: 10),
 
-          if (!allCaptured) ...[
-            Text(
-              'Scan ${_currentAngle + 1}/3: ${_angleLabels[_currentAngle]}',
-              style: GoogleFonts.inter(
-                color: Colors.orange,
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-              ),
+          Text(
+            'Scan ${_currentAngle + 1}/3: ${_angleLabels[_currentAngle]}',
+            style: GoogleFonts.inter(
+              color: Colors.orange,
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
             ),
-            const SizedBox(height: 4),
-            Text(
-              _angleInstructions[_currentAngle],
-              style: GoogleFonts.inter(color: Colors.white60, fontSize: 12),
-              textAlign: TextAlign.center,
-            ),
-          ] else
-            Text(
-              'All 3 scans captured!',
-              style: GoogleFonts.inter(
-                color: AppColors.secondary,
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-
+          ),
+          const SizedBox(height: 4),
+          Text(
+            _angleInstructions[_currentAngle],
+            style: GoogleFonts.inter(color: Colors.white60, fontSize: 12),
+            textAlign: TextAlign.center,
+          ),
           const SizedBox(height: 6),
-
           Text(
             _statusMessage,
             style: GoogleFonts.inter(color: Colors.white54, fontSize: 11),
             textAlign: TextAlign.center,
           ),
-
-          // YOLOv8 detection info
-          if (_detectionConfidence > 0 && _yoloAvailable) ...[
-            const SizedBox(height: 6),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: Colors.blue.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    'YOLOv8',
-                    style: GoogleFonts.robotoMono(
-                      color: Colors.blue[300],
-                      fontSize: 9,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  '$_detectedClass ${_detectionConfidence.toStringAsFixed(0)}%',
-                  style: GoogleFonts.inter(
-                    color: _detectionConfidence > 50 ? Colors.green[400] : Colors.orange,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(width: 4),
-                Icon(
-                  _detectionConfidence > 50 ? Icons.check_circle : Icons.warning,
-                  color: _detectionConfidence > 50 ? Colors.green[400] : Colors.orange,
-                  size: 14,
-                ),
-              ],
-            ),
-          ],
 
           // GPS
           if (_currentPosition != null) ...[
@@ -668,53 +422,49 @@ class _NativeMuzzleCameraScreenState
             ),
           ],
 
+          const SizedBox(height: 8),
+          Text(
+            'Use the camera button above to capture',
+            style: GoogleFonts.inter(color: Colors.white38, fontSize: 10),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCompletedControls() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      color: Colors.black,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(3, (i) => Container(
+              width: 36,
+              height: 12,
+              margin: const EdgeInsets.symmetric(horizontal: 4),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(6),
+                color: AppColors.secondary,
+              ),
+            )),
+          ),
           const SizedBox(height: 12),
-
-          // Capture button
-          if (!allCaptured)
-            GestureDetector(
-              onTap: _isCameraReady && !_isCapturing ? _capturePhoto : null,
-              child: Container(
-                width: 70,
-                height: 70,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: _isCameraReady ? Colors.white : Colors.grey,
-                    width: 4,
-                  ),
-                ),
-                child: Container(
-                  margin: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: _isCapturing
-                        ? Colors.grey
-                        : _isCameraReady
-                            ? Colors.red
-                            : Colors.grey[700],
-                  ),
-                  child: _isCapturing
-                      ? const Padding(
-                          padding: EdgeInsets.all(18),
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 2,
-                          ),
-                        )
-                      : null,
-                ),
-              ),
+          Text(
+            'All 3 scans captured! ✓',
+            style: GoogleFonts.inter(
+              color: AppColors.secondary,
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
             ),
-
-          if (!allCaptured)
-            Padding(
-              padding: const EdgeInsets.only(top: 6),
-              child: Text(
-                'Tap to capture',
-                style: GoogleFonts.inter(color: Colors.white38, fontSize: 11),
-              ),
-            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Processing...',
+            style: GoogleFonts.inter(color: Colors.white54, fontSize: 12),
+          ),
         ],
       ),
     );
@@ -739,7 +489,7 @@ class _NativeMuzzleCameraScreenState
                 right: 0,
                 child: Container(
                   padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
+                  decoration: const BoxDecoration(
                     gradient: LinearGradient(
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
@@ -782,13 +532,12 @@ class _MuzzleOverlayPainter extends CustomPainter {
     final h = size.height;
     if (w == 0 || h == 0) return;
 
-    // Guide zone
+    // Guide zone — centered in the camera preview
     final guideRect = species == 'mule'
-        ? Rect.fromLTRB(w * 0.15, h * 0.25, w * 0.85, h * 0.65)
-        : Rect.fromLTRB(w * 0.2, h * 0.28, w * 0.8, h * 0.62);
+        ? Rect.fromLTRB(w * 0.12, h * 0.22, w * 0.88, h * 0.68)
+        : Rect.fromLTRB(w * 0.18, h * 0.25, w * 0.82, h * 0.65);
 
-    // Dim outside guide
-    final dimPaint = Paint()..color = Colors.black.withValues(alpha: 0.5);
+    // Create guide path
     final guidePath = Path();
     if (species == 'mule') {
       guidePath.addRRect(RRect.fromRectAndRadius(guideRect, const Radius.circular(40)));
@@ -796,19 +545,15 @@ class _MuzzleOverlayPainter extends CustomPainter {
       guidePath.addOval(guideRect);
     }
 
-    // Draw dim overlay with cutout
-    canvas.save();
-    canvas.clipPath(guidePath, doAntiAlias: true);
-    canvas.restore();
-
-    // Full screen dim
+    // Dim outside guide
+    final dimPaint = Paint()..color = Colors.black.withValues(alpha: 0.55);
     final fullPath = Path()..addRect(Rect.fromLTWH(0, 0, w, h));
     final combinedPath = Path.combine(PathOperation.difference, fullPath, guidePath);
     canvas.drawPath(combinedPath, dimPaint);
 
-    // Guide border
+    // Guide border — animated glow effect
     final guidePaint = Paint()
-      ..color = Colors.white
+      ..color = Colors.white.withValues(alpha: 0.8)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2.5;
 
@@ -826,21 +571,22 @@ class _MuzzleOverlayPainter extends CustomPainter {
       ..color = Colors.white
       ..style = PaintingStyle.stroke
       ..strokeWidth = 4;
-    const len = 25.0;
+    const len = 28.0;
 
+    // Top-left
     canvas.drawLine(Offset(guideRect.left, guideRect.top), Offset(guideRect.left + len, guideRect.top), cornerPaint);
     canvas.drawLine(Offset(guideRect.left, guideRect.top), Offset(guideRect.left, guideRect.top + len), cornerPaint);
-
+    // Top-right
     canvas.drawLine(Offset(guideRect.right - len, guideRect.top), Offset(guideRect.right, guideRect.top), cornerPaint);
     canvas.drawLine(Offset(guideRect.right, guideRect.top), Offset(guideRect.right, guideRect.top + len), cornerPaint);
-
+    // Bottom-left
     canvas.drawLine(Offset(guideRect.left, guideRect.bottom), Offset(guideRect.left + len, guideRect.bottom), cornerPaint);
     canvas.drawLine(Offset(guideRect.left, guideRect.bottom - len), Offset(guideRect.left, guideRect.bottom), cornerPaint);
-
+    // Bottom-right
     canvas.drawLine(Offset(guideRect.right - len, guideRect.bottom), Offset(guideRect.right, guideRect.bottom), cornerPaint);
     canvas.drawLine(Offset(guideRect.right, guideRect.bottom - len), Offset(guideRect.right, guideRect.bottom), cornerPaint);
 
-    // Guide label
+    // Guide label at top
     final labelText = species == 'mule' ? 'Mule Nose + Lip Area' : 'Cow Muzzle (Nasal Ridge)';
     final textPainter = TextPainter(
       text: TextSpan(
@@ -849,6 +595,7 @@ class _MuzzleOverlayPainter extends CustomPainter {
           color: Colors.white,
           fontSize: 16,
           fontWeight: FontWeight.bold,
+          shadows: [Shadow(blurRadius: 4, color: Colors.black)],
         ),
       ),
       textDirection: TextDirection.ltr,
@@ -859,7 +606,11 @@ class _MuzzleOverlayPainter extends CustomPainter {
     final instructPainter = TextPainter(
       text: const TextSpan(
         text: 'Position muzzle in the guide',
-        style: TextStyle(color: Colors.white70, fontSize: 13),
+        style: TextStyle(
+          color: Colors.white70,
+          fontSize: 13,
+          shadows: [Shadow(blurRadius: 4, color: Colors.black)],
+        ),
       ),
       textDirection: TextDirection.ltr,
     )..layout();
