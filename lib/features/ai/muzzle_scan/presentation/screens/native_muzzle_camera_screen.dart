@@ -230,11 +230,11 @@ class _NativeMuzzleCameraScreenState
     }
   }
 
-  // YOLOv8 Platform Channel
+  // YOLOv8 Platform Channel — detection done server-side after upload
   static const _yoloChannel = MethodChannel('com.xora.cattleshield/muzzle_camera');
   double _detectionConfidence = 0;
   String _detectedClass = '';
-  bool _yoloAvailable = true;
+  bool _yoloAvailable = false; // Disabled on-device — server-side detection only
 
   /// Run YOLOv8 detection on an image file (non-blocking, never crashes)
   Future<Map<String, dynamic>?> _runYoloDetection(String imagePath) async {
