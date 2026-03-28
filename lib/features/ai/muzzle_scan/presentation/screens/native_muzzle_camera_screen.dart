@@ -91,12 +91,17 @@ class _NativeMuzzleCameraScreenState
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (!mounted) return;
     final controller = _cameraController;
     if (controller == null || !controller.value.isInitialized) return;
 
     if (state == AppLifecycleState.inactive) {
-      controller.dispose();
       setState(() => _isCameraReady = false);
+      // Dispose after setState to avoid rebuild issues
+      Future.microtask(() {
+        controller.dispose();
+        _cameraController = null;
+      });
     } else if (state == AppLifecycleState.resumed) {
       _initCamera();
     }
@@ -166,7 +171,7 @@ class _NativeMuzzleCameraScreenState
   String _detectedClass = '';
   bool _yoloAvailable = true;
 
-  /// Run YOLOv8 detection on an image file
+  /// Run YOLOv8 detection on an image file (non-blocking, never crashes)
   Future<Map<String, dynamic>?> _runYoloDetection(String imagePath) async {
     if (!_yoloAvailable) return null;
 
@@ -175,9 +180,17 @@ class _NativeMuzzleCameraScreenState
         'imagePath': imagePath,
         'species': widget.species,
       });
+      if (result == null) return null;
       return Map<String, dynamic>.from(result as Map);
     } on MissingPluginException {
+      // Platform channel not registered (e.g., on web or emulator)
       _yoloAvailable = false;
+      debugPrint('YOLOv8: MissingPluginException — disabling');
+      return null;
+    } on PlatformException catch (e) {
+      // Native side error (ONNX model failed, bitmap decode error, etc.)
+      debugPrint('YOLOv8 PlatformException: ${e.message}');
+      // Don't disable — might work on next frame
       return null;
     } catch (e) {
       debugPrint('YOLOv8 detection error: $e');
@@ -186,42 +199,87 @@ class _NativeMuzzleCameraScreenState
   }
 
   Future<void> _capturePhoto() async {
-    if (_isCapturing || !_isCameraReady || _cameraController == null) return;
-    if (!_cameraController!.value.isInitialized) return;
+    if (_isCapturing) return;
+    if (_cameraController == null || !_isCameraReady) {
+      if (mounted) {
+        setState(() => _statusMessage = 'Camera not ready — please wait');
+      }
+      return;
+    }
+    if (!_cameraController!.value.isInitialized) {
+      if (mounted) {
+        setState(() => _statusMessage = 'Camera initializing...');
+      }
+      return;
+    }
 
     setState(() => _isCapturing = true);
 
     try {
-      final xFile = await _cameraController!.takePicture();
-
-      // Run YOLOv8 detection on captured image
-      final detection = await _runYoloDetection(xFile.path);
-
-      if (detection != null && _yoloAvailable) {
-        final detected = detection['detected'] as bool? ?? false;
-        final confidence = (detection['confidence'] as num?)?.toDouble() ?? 0;
-        final message = detection['message'] as String? ?? '';
-        final className = detection['className'] as String? ?? '';
-
-        setState(() {
-          _detectionConfidence = confidence;
-          _detectedClass = className;
-        });
-
-        // If confidence too low, reject and ask to retake
-        if (!detected || confidence < 25) {
+      // Take picture with safety check
+      final XFile xFile;
+      try {
+        xFile = await _cameraController!.takePicture();
+      } catch (cameraError) {
+        debugPrint('Camera takePicture error: $cameraError');
+        if (mounted) {
           setState(() {
             _isCapturing = false;
-            _statusMessage = 'No muzzle detected — try again. $message';
+            _statusMessage = 'Camera error — tap to retry';
           });
-          // Delete the bad photo
-          try { await File(xFile.path).delete(); } catch (_) {}
-          return;
         }
+        return;
       }
 
+      // Verify file exists
+      if (!await File(xFile.path).exists()) {
+        if (mounted) {
+          setState(() {
+            _isCapturing = false;
+            _statusMessage = 'Photo not saved — tap to retry';
+          });
+        }
+        return;
+      }
+
+      // Check if still mounted after async gap
+      if (!mounted) return;
+
+      // Run YOLOv8 detection (optional — never crashes the app)
+      try {
+        final detection = await _runYoloDetection(xFile.path);
+
+        if (mounted && detection != null && _yoloAvailable) {
+          final detected = detection['detected'] as bool? ?? false;
+          final confidence = (detection['confidence'] as num?)?.toDouble() ?? 0;
+          final message = detection['message'] as String? ?? '';
+          final className = detection['className'] as String? ?? '';
+
+          setState(() {
+            _detectionConfidence = confidence;
+            _detectedClass = className;
+          });
+
+          // If confidence too low, reject and ask to retake
+          if (!detected || confidence < 25) {
+            setState(() {
+              _isCapturing = false;
+              _statusMessage = 'No muzzle detected — try again. $message';
+            });
+            // Delete the bad photo safely
+            try { await File(xFile.path).delete(); } catch (_) {}
+            return;
+          }
+        }
+      } catch (yoloError) {
+        // YOLOv8 failed — continue without detection (still save the photo)
+        debugPrint('YOLOv8 post-capture error (ignored): $yoloError');
+      }
+
+      if (!mounted) return;
+
       // Read bytes for hash
-      final bytes = await xFile.readAsBytes();
+      final bytes = await File(xFile.path).readAsBytes();
       final hash = sha256.convert(bytes).toString();
 
       // IST timestamp
@@ -277,7 +335,12 @@ class _NativeMuzzleCameraScreenState
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _cameraController?.dispose();
+    try {
+      _cameraController?.dispose();
+    } catch (e) {
+      debugPrint('Camera dispose error: $e');
+    }
+    _cameraController = null;
     super.dispose();
   }
 
