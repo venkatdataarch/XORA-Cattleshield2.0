@@ -10,12 +10,26 @@ class MainActivity : FlutterActivity() {
 
     private val CHANNEL = "com.xora.cattleshield/muzzle_camera"
     private var yoloDetector: YoloDetector? = null
+    private var yoloInitFailed = false
+
+    private fun getOrCreateDetector(): YoloDetector? {
+        if (yoloInitFailed) return null
+        if (yoloDetector == null) {
+            try {
+                yoloDetector = YoloDetector(this)
+            } catch (e: Exception) {
+                e.printStackTrace()
+                yoloInitFailed = true
+                return null
+            }
+        }
+        return yoloDetector
+    }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
 
-        // Initialize YOLO detector
-        yoloDetector = YoloDetector(this)
+        // YOLO detector is lazy-loaded on first use, not on app startup
 
         val channel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL)
 
@@ -44,7 +58,7 @@ class MainActivity : FlutterActivity() {
                             RectF(0.2f, 0.28f, 0.8f, 0.62f)
                         }
 
-                        val detection = yoloDetector?.detectMuzzle(bitmap, guideRect)
+                        val detection = getOrCreateDetector()?.detectMuzzle(bitmap, guideRect)
                         bitmap.recycle()
 
                         if (detection != null) {
@@ -83,7 +97,7 @@ class MainActivity : FlutterActivity() {
                             return@setMethodCallHandler
                         }
 
-                        val detections = yoloDetector?.detect(bitmap) ?: emptyList()
+                        val detections = getOrCreateDetector()?.detect(bitmap) ?: emptyList()
                         bitmap.recycle()
 
                         val results = detections.map { d ->

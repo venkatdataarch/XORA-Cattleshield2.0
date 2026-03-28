@@ -532,34 +532,69 @@ class _AnimalOnboardingScreenState
         ? 'cow'
         : 'mule';
 
-    // Use native CameraX + YOLOv8 on Android, fallback on other platforms
-    if (!kIsWeb && Platform.isAndroid) {
-      final captures = await Navigator.push<List<MuzzleScanCapture>>(
-        context,
-        MaterialPageRoute(
-          builder: (_) => NativeMuzzleCameraScreen(
-            species: speciesStr,
-          ),
-        ),
-      );
-
-      if (captures != null && captures.isNotEmpty && mounted) {
-        setState(() {
-          _muzzleCaptureData = captures.map((c) => MuzzleCaptureData(
-            imagePath: c.imagePath,
-            angle: c.angle,
-            timestamp: DateTime.tryParse(c.timestamp) ?? DateTime.now(),
-            latitude: c.latitude,
-            longitude: c.longitude,
-            gpsAccuracy: null,
-            sha256Hash: c.sha256Hash,
-            species: c.species,
-          )).toList();
-          _muzzleImages.clear();
-          for (final c in captures) {
-            _muzzleImages.add(XFile(c.imagePath));
+    // Request camera permission first
+    if (!kIsWeb) {
+      try {
+        final cameras = await availableCameras();
+        if (cameras.isEmpty) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('No camera available'), backgroundColor: Colors.red),
+            );
           }
-        });
+          return;
+        }
+      } catch (e) {
+        debugPrint('Camera check failed: $e');
+        // Continue anyway — the camera screen will handle the error
+      }
+    }
+
+    // Use native camera on Android, fallback on other platforms
+    if (!kIsWeb && Platform.isAndroid) {
+      try {
+        final captures = await Navigator.push<List<MuzzleScanCapture>>(
+          context,
+          MaterialPageRoute(
+            builder: (_) => NativeMuzzleCameraScreen(
+              species: speciesStr,
+            ),
+          ),
+        );
+
+        if (captures != null && captures.isNotEmpty && mounted) {
+          setState(() {
+            _muzzleCaptureData = captures.map((c) => MuzzleCaptureData(
+              imagePath: c.imagePath,
+              angle: c.angle,
+              timestamp: DateTime.tryParse(c.timestamp) ?? DateTime.now(),
+              latitude: c.latitude,
+              longitude: c.longitude,
+              gpsAccuracy: null,
+              sha256Hash: c.sha256Hash,
+              species: c.species,
+            )).toList();
+            _muzzleImages.clear();
+            for (final c in captures) {
+              _muzzleImages.add(XFile(c.imagePath));
+            }
+          });
+        }
+      } catch (e) {
+        debugPrint('Muzzle camera error: $e');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Camera error: $e'),
+              backgroundColor: Colors.red,
+              action: SnackBarAction(
+                label: 'Retry',
+                textColor: Colors.white,
+                onPressed: _launchAutoCaptureMuzzle,
+              ),
+            ),
+          );
+        }
       }
     } else {
       // Fallback: use old auto-capture screen

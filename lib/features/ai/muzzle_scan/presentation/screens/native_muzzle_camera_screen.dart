@@ -9,6 +9,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 import '../../../../../core/constants/app_colors.dart';
 
@@ -109,9 +110,32 @@ class _NativeMuzzleCameraScreenState
 
   Future<void> _initCamera() async {
     try {
+      // Step 1: Request camera permission explicitly
+      var cameraStatus = await Permission.camera.status;
+      debugPrint('Camera permission status: $cameraStatus');
+
+      if (cameraStatus.isDenied) {
+        cameraStatus = await Permission.camera.request();
+        debugPrint('Camera permission after request: $cameraStatus');
+      }
+
+      if (cameraStatus.isPermanentlyDenied) {
+        if (!mounted) return;
+        setState(() => _statusMessage = 'Camera permission denied');
+        _showPermissionDeniedDialog();
+        return;
+      }
+
+      if (!cameraStatus.isGranted) {
+        if (!mounted) return;
+        setState(() => _statusMessage = 'Camera permission required');
+        return;
+      }
+
+      // Step 2: Get available cameras
       final cameras = await availableCameras();
       if (cameras.isEmpty) {
-        setState(() => _statusMessage = 'No camera found');
+        if (mounted) setState(() => _statusMessage = 'No camera found');
         return;
       }
 
@@ -121,6 +145,7 @@ class _NativeMuzzleCameraScreenState
         orElse: () => cameras.first,
       );
 
+      // Step 3: Initialize camera controller
       final controller = CameraController(
         backCamera,
         ResolutionPreset.high,
@@ -130,7 +155,10 @@ class _NativeMuzzleCameraScreenState
 
       await controller.initialize();
 
-      if (!mounted) return;
+      if (!mounted) {
+        controller.dispose();
+        return;
+      }
 
       // Lock focus mode for close-up muzzle shots
       try {
@@ -144,8 +172,45 @@ class _NativeMuzzleCameraScreenState
         _statusMessage = 'Position muzzle in the guide';
       });
     } catch (e) {
-      setState(() => _statusMessage = 'Camera error: $e');
+      debugPrint('Camera init error: $e');
+      if (mounted) {
+        setState(() => _statusMessage = 'Camera error — tap to retry');
+      }
     }
+  }
+
+  void _showPermissionDeniedDialog() {
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Camera Permission Required'),
+        content: const Text(
+          'CattleShield needs camera access to scan animal muzzles. '
+          'Please grant camera permission in your phone settings.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              Navigator.pop(context); // Close camera screen
+            },
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              openAppSettings();
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Open Settings'),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _getLocation() async {
