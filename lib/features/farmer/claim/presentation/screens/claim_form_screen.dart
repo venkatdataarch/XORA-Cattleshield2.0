@@ -345,8 +345,33 @@ class _ClaimFormScreenState extends ConsumerState<ClaimFormScreen> {
     );
   }
 
+  Widget _policyInfoRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 110,
+            child: Text(
+              label,
+              style: GoogleFonts.inter(fontSize: 12, color: Colors.grey.shade600),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildClaimForm() {
     final schemaAsync = ref.watch(_claimFormSchemaProvider(_formType));
+    final policy = ref.read(selectedPolicyProvider);
 
     return schemaAsync.when(
       loading: () => const Center(
@@ -363,6 +388,42 @@ class _ClaimFormScreenState extends ConsumerState<ClaimFormScreen> {
 
         return Column(
           children: [
+            // Auto-populated policy info banner
+            if (policy != null)
+              Container(
+                width: double.infinity,
+                margin: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.04),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.primary.withValues(alpha: 0.12)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.auto_awesome, color: AppColors.secondary, size: 16),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Policy details auto-filled',
+                          style: GoogleFonts.inter(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.secondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    _policyInfoRow('Policy', policy.policyNumber),
+                    _policyInfoRow('Animal', policy.animalName ?? 'N/A'),
+                    _policyInfoRow('Sum Insured', '\u20B9${policy.sumInsured.toStringAsFixed(0)}'),
+                  ],
+                ),
+              ),
+
             // Type selection indicator
             Container(
               width: double.infinity,
@@ -620,6 +681,8 @@ class _ClaimFormScreenState extends ConsumerState<ClaimFormScreen> {
 
   // ─── Step 4: Review & Submit ──────────────────────────────────────
   Widget _buildReviewAndSubmit() {
+    final policy = ref.read(selectedPolicyProvider);
+
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Column(
@@ -635,6 +698,61 @@ class _ClaimFormScreenState extends ConsumerState<ClaimFormScreen> {
             ),
           ),
           const SizedBox(height: 16),
+
+          // Policy details (auto-populated)
+          if (policy != null) ...[
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.05),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: AppColors.primary.withValues(alpha: 0.15)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.verified_user, color: AppColors.primary, size: 20),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Policy Details',
+                        style: GoogleFonts.poppins(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                      const Spacer(),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: AppColors.success.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          'Auto-filled',
+                          style: GoogleFonts.inter(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.success,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  _policyInfoRow('Policy No.', policy.policyNumber),
+                  _policyInfoRow('Animal', policy.animalName ?? 'N/A'),
+                  _policyInfoRow('Insured Name', policy.insuredName ?? 'N/A'),
+                  _policyInfoRow('Sum Insured', '\u20B9${policy.sumInsured.toStringAsFixed(0)}'),
+                  _policyInfoRow('Coverage', '${policy.startDate.day}/${policy.startDate.month}/${policy.startDate.year} — ${policy.endDate.day}/${policy.endDate.month}/${policy.endDate.year}'),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
 
           // Claim type
           _ReviewCard(
