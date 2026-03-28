@@ -1,0 +1,284 @@
+{
+  "id": "claim_death_v1",
+  "formType": "claim_death",
+  "version": "1.0",
+  "title": "UIIC Livestock Death Claim Form",
+  "animalTypes": ["cow", "buffalo", "mule", "horse", "donkey"],
+  "sections": [
+    {
+      "id": "policy_reference",
+      "title": "Section 1 - Policy Reference",
+      "description": "Policy and insured details (pre-filled from policy)",
+      "fields": [
+        {
+          "key": "policy_number",
+          "label": "Policy Number",
+          "type": "text",
+          "required": true,
+          "readOnly": true
+        },
+        {
+          "key": "claim_number",
+          "label": "Claim Number",
+          "type": "text",
+          "required": false,
+          "readOnly": true
+        },
+        {
+          "key": "insured_name",
+          "label": "Name of Insured",
+          "type": "text",
+          "required": true,
+          "readOnly": true
+        },
+        {
+          "key": "address",
+          "label": "Address of Insured",
+          "type": "textarea",
+          "required": true,
+          "readOnly": true
+        }
+      ]
+    },
+    {
+      "id": "animal_details",
+      "title": "Section 2 - Animal Details",
+      "description": "Details of the insured animal (pre-filled from policy)",
+      "fields": [
+        {
+          "key": "animal_description",
+          "label": "Description of Animal",
+          "type": "text",
+          "required": true,
+          "readOnly": true
+        },
+        {
+          "key": "identification_tag",
+          "label": "Ear Tag / Identification Number",
+          "type": "text",
+          "required": true,
+          "readOnly": true
+        },
+        {
+          "key": "species_breed",
+          "label": "Species / Breed",
+          "type": "text",
+          "required": true,
+          "readOnly": true
+        },
+        {
+          "key": "sex",
+          "label": "Sex",
+          "type": "text",
+          "required": true,
+          "readOnly": true
+        },
+        {
+          "key": "color",
+          "label": "Colour",
+          "type": "text",
+          "required": true,
+          "readOnly": true
+        },
+        {
+          "key": "age",
+          "label": "Age",
+          "type": "text",
+          "required": true,
+          "readOnly": true
+        },
+        {
+          "key": "value_prior_to_illness",
+          "label": "Value of Animal Prior to Illness/Accident",
+          "type": "currency",
+          "required": true,
+          "hint": "Estimated market value before the incident"
+        }
+      ]
+    },
+    {
+      "id": "death_details",
+      "title": "Section 3 - Death Details",
+      "description": "Circumstances surrounding the death of the animal",
+      "fields": [
+        {
+          "key": "first_seen_ill",
+          "label": "Date Animal Was First Seen Ill",
+          "type": "date",
+          "required": true
+        },
+        {
+          "key": "vet_notice_date",
+          "label": "Date Veterinary Doctor Was Notified",
+          "type": "date",
+          "required": true
+        },
+        {
+          "key": "vet_first_seen",
+          "label": "Date Vet First Examined the Animal",
+          "type": "date",
+          "required": true
+        },
+        {
+          "key": "vet_last_seen",
+          "label": "Date Vet Last Examined the Animal",
+          "type": "date",
+          "required": true
+        },
+        {
+          "key": "vet_name",
+          "label": "Name of Veterinary Doctor",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "vet_address",
+          "label": "Address of Veterinary Doctor",
+          "type": "textarea",
+          "required": true
+        },
+        {
+          "key": "place_of_death",
+          "label": "Place of Death",
+          "type": "text",
+          "required": true,
+          "hint": "Where exactly did the animal die?"
+        },
+        {
+          "key": "death_date",
+          "label": "Date of Death",
+          "type": "date",
+          "required": true
+        },
+        {
+          "key": "death_time",
+          "label": "Time of Death",
+          "type": "text",
+          "required": true,
+          "hint": "Approximate time (e.g. 10:30 AM)"
+        },
+        {
+          "key": "cause_of_death",
+          "label": "Cause of Death",
+          "type": "dropdown",
+          "required": true,
+          "options": ["Disease", "Accident", "Operation"]
+        },
+        {
+          "key": "disease_account",
+          "label": "Account of Disease",
+          "type": "textarea",
+          "required": true,
+          "hint": "Describe the disease, symptoms, duration, and progression",
+          "showWhen": { "field": "cause_of_death", "value": "Disease" }
+        },
+        {
+          "key": "accident_details",
+          "label": "Accident Details",
+          "type": "textarea",
+          "required": true,
+          "hint": "Who was in charge of the animal? What happened? Full circumstances",
+          "showWhen": { "field": "cause_of_death", "value": "Accident" }
+        },
+        {
+          "key": "operation_details",
+          "label": "Operation Details",
+          "type": "textarea",
+          "required": true,
+          "hint": "Nature of the operation and name of the surgeon",
+          "showWhen": { "field": "cause_of_death", "value": "Operation" }
+        },
+        {
+          "key": "last_usage_purpose",
+          "label": "Last Purpose for Which Animal Was Used",
+          "type": "text",
+          "required": true,
+          "hint": "e.g. Dairy, Breeding, Draught, Transport"
+        },
+        {
+          "key": "bred_or_bought",
+          "label": "Was the Animal Bred or Bought?",
+          "type": "radio",
+          "required": true,
+          "options": ["Bred", "Bought"]
+        },
+        {
+          "key": "purchase_date",
+          "label": "Date of Purchase",
+          "type": "date",
+          "required": true,
+          "showWhen": { "field": "bred_or_bought", "value": "Bought" }
+        },
+        {
+          "key": "purchase_price",
+          "label": "Purchase Price",
+          "type": "currency",
+          "required": true,
+          "showWhen": { "field": "bred_or_bought", "value": "Bought" }
+        },
+        {
+          "key": "last_calving_date",
+          "label": "Date of Last Calving",
+          "type": "date",
+          "required": false,
+          "showWhen": { "field": "sex", "value": "Female" }
+        },
+        {
+          "key": "pregnancy_stage",
+          "label": "Stage of Pregnancy (if applicable)",
+          "type": "text",
+          "required": false,
+          "hint": "e.g. 5 months pregnant, Not pregnant",
+          "showWhen": { "field": "sex", "value": "Female" }
+        },
+        {
+          "key": "claim_amount",
+          "label": "Claim Amount Sought",
+          "type": "currency",
+          "required": true,
+          "validation": { "min": 1, "errorMessage": "Claim amount must be greater than zero" }
+        }
+      ]
+    },
+    {
+      "id": "other_details",
+      "title": "Section 4 - Other Details",
+      "fields": [
+        {
+          "key": "insured_elsewhere",
+          "label": "Is the Animal Insured Elsewhere?",
+          "type": "radio",
+          "required": true,
+          "options": ["Yes", "No"]
+        },
+        {
+          "key": "other_insurer",
+          "label": "Name of Other Insurer",
+          "type": "text",
+          "required": true,
+          "showWhen": { "field": "insured_elsewhere", "value": "Yes" }
+        },
+        {
+          "key": "other_policy_number",
+          "label": "Other Policy Number",
+          "type": "text",
+          "required": false,
+          "showWhen": { "field": "insured_elsewhere", "value": "Yes" }
+        },
+        {
+          "key": "ear_tag_enclosed",
+          "label": "Is the Ear Tag Enclosed?",
+          "type": "radio",
+          "required": true,
+          "options": ["Yes", "No"]
+        },
+        {
+          "key": "premium_paid_date",
+          "label": "Date Premium Was Paid",
+          "type": "date",
+          "required": true
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,397 @@
+{
+  "id": "proposal_mule_v1",
+  "formType": "proposal_mule",
+  "version": "1.0",
+  "title": "UIIC Mule / Horse / Donkey Insurance Proposal Form",
+  "animalTypes": ["mule", "horse", "donkey"],
+  "sections": [
+    {
+      "id": "owner_details",
+      "title": "Section 1 - Owner Details",
+      "description": "Details of the animal owner / proposer",
+      "fields": [
+        {
+          "key": "owner_name",
+          "label": "Name of Proposer",
+          "type": "text",
+          "required": true,
+          "hint": "Full name as per Aadhaar",
+          "validation": { "minLength": 3, "maxLength": 100 }
+        },
+        {
+          "key": "father_name",
+          "label": "Father's / Husband's Name",
+          "type": "text",
+          "required": true,
+          "validation": { "minLength": 3, "maxLength": 100 }
+        },
+        {
+          "key": "address",
+          "label": "Residential Address",
+          "type": "textarea",
+          "required": true,
+          "hint": "Complete postal address"
+        },
+        {
+          "key": "village",
+          "label": "Village / Town",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "district",
+          "label": "District",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "state",
+          "label": "State",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "phone",
+          "label": "Mobile Number",
+          "type": "text",
+          "required": true,
+          "hint": "10-digit mobile number",
+          "validation": {
+            "pattern": "^[6-9]\\d{9}$",
+            "errorMessage": "Enter a valid 10-digit mobile number"
+          }
+        },
+        {
+          "key": "aadhaar",
+          "label": "Aadhaar Number",
+          "type": "text",
+          "required": true,
+          "hint": "12-digit Aadhaar number",
+          "validation": {
+            "pattern": "^\\d{12}$",
+            "errorMessage": "Enter a valid 12-digit Aadhaar number"
+          }
+        },
+        {
+          "key": "occupation",
+          "label": "Occupation",
+          "type": "dropdown",
+          "required": true,
+          "options": ["Agriculture", "Transport", "Animal Husbandry", "Self-employed", "Salaried", "Other"]
+        },
+        {
+          "key": "income_source",
+          "label": "Primary Source of Income",
+          "type": "dropdown",
+          "required": true,
+          "options": ["Agriculture", "Transport", "Livestock", "Business", "Service", "Mixed"]
+        }
+      ]
+    },
+    {
+      "id": "animal_particulars",
+      "title": "Section 2 - Animal Particulars",
+      "description": "Details of the animal proposed for insurance",
+      "fields": [
+        {
+          "key": "animal_type",
+          "label": "Type of Animal",
+          "type": "dropdown",
+          "required": true,
+          "options": ["Mule", "Horse", "Donkey"]
+        },
+        {
+          "key": "identification_tag",
+          "label": "Ear Tag / Identification Number",
+          "type": "text",
+          "required": true,
+          "hint": "Unique identification number"
+        },
+        {
+          "key": "species_breed",
+          "label": "Species / Breed",
+          "type": "text",
+          "required": true,
+          "hint": "e.g. Country Bred, Marwari, Poitou"
+        },
+        {
+          "key": "sex",
+          "label": "Sex",
+          "type": "radio",
+          "required": true,
+          "options": ["Male", "Female"]
+        },
+        {
+          "key": "color",
+          "label": "Colour / Markings",
+          "type": "text",
+          "required": true,
+          "hint": "e.g. Brown, Grey, Black"
+        },
+        {
+          "key": "distinguishing_marks",
+          "label": "Distinguishing Marks",
+          "type": "textarea",
+          "required": false,
+          "hint": "Any unique physical identifiers"
+        },
+        {
+          "key": "exact_age_years",
+          "label": "Exact Age (Years)",
+          "type": "number",
+          "required": true,
+          "validation": { "min": 1, "max": 35, "errorMessage": "Age must be between 1 and 35 years" }
+        },
+        {
+          "key": "height_cm",
+          "label": "Height (cm)",
+          "type": "number",
+          "required": true,
+          "hint": "Height at withers in centimetres",
+          "validation": { "min": 80, "max": 200, "errorMessage": "Height must be between 80 and 200 cm" }
+        },
+        {
+          "key": "purchase_date",
+          "label": "Date of Purchase",
+          "type": "date",
+          "required": false
+        },
+        {
+          "key": "purchase_price",
+          "label": "Purchase Price",
+          "type": "currency",
+          "required": false
+        },
+        {
+          "key": "market_value",
+          "label": "Present Market Value",
+          "type": "currency",
+          "required": true,
+          "validation": { "min": 1000, "errorMessage": "Market value must be at least 1000" }
+        },
+        {
+          "key": "sum_insured",
+          "label": "Sum Insured",
+          "type": "currency",
+          "required": true,
+          "validation": { "min": 1000, "errorMessage": "Sum insured must be at least 1000" }
+        }
+      ]
+    },
+    {
+      "id": "insurance_details",
+      "title": "Section 3 - Insurance Details",
+      "fields": [
+        {
+          "key": "insurance_period",
+          "label": "Period of Insurance",
+          "type": "dropdown",
+          "required": true,
+          "options": ["1 Year", "2 Years", "3 Years"]
+        },
+        {
+          "key": "purpose_of_use",
+          "label": "Purpose of Use",
+          "type": "dropdown",
+          "required": true,
+          "options": ["Transport", "Riding", "Draught", "Breeding", "Other"]
+        },
+        {
+          "key": "previous_insurance",
+          "label": "Previously Insured?",
+          "type": "radio",
+          "required": true,
+          "options": ["Yes", "No"]
+        },
+        {
+          "key": "previous_insurer",
+          "label": "Name of Previous Insurer",
+          "type": "text",
+          "required": true,
+          "showWhen": { "field": "previous_insurance", "value": "Yes" }
+        },
+        {
+          "key": "previous_policy_number",
+          "label": "Previous Policy Number",
+          "type": "text",
+          "required": false,
+          "showWhen": { "field": "previous_insurance", "value": "Yes" }
+        },
+        {
+          "key": "previous_claims",
+          "label": "Any Previous Claims?",
+          "type": "radio",
+          "required": true,
+          "options": ["Yes", "No"],
+          "showWhen": { "field": "previous_insurance", "value": "Yes" }
+        },
+        {
+          "key": "claim_details",
+          "label": "Details of Previous Claims",
+          "type": "textarea",
+          "required": true,
+          "hint": "Describe previous claim amounts and outcomes",
+          "showWhen": { "field": "previous_claims", "value": "Yes" }
+        }
+      ]
+    },
+    {
+      "id": "farm_shed",
+      "title": "Section 4 - Farm & Shed Details",
+      "description": "Details of the farm premises and animal housing",
+      "fields": [
+        {
+          "key": "farm_location",
+          "label": "Farm / Stable Location",
+          "type": "text",
+          "required": true,
+          "hint": "Location / area of the farm or stable"
+        },
+        {
+          "key": "farm_address",
+          "label": "Farm / Stable Address",
+          "type": "textarea",
+          "required": true,
+          "hint": "Complete address where animal is housed"
+        },
+        {
+          "key": "shed_type",
+          "label": "Type of Shed / Stable",
+          "type": "dropdown",
+          "required": true,
+          "options": ["Pucca", "Semi-Pucca", "Kutcha", "Open"]
+        },
+        {
+          "key": "shed_construction",
+          "label": "Shed / Stable Construction Material",
+          "type": "text",
+          "required": false,
+          "hint": "e.g. Brick, Concrete, Tin, Thatched"
+        },
+        {
+          "key": "water_source",
+          "label": "Source of Drinking Water",
+          "type": "dropdown",
+          "required": true,
+          "options": ["Borewell", "Well", "River/Canal", "Tap Water", "Pond", "Other"]
+        },
+        {
+          "key": "feeding_arrangement",
+          "label": "Feeding Arrangement",
+          "type": "dropdown",
+          "required": true,
+          "options": ["Stall Fed", "Grazing", "Both Stall Fed and Grazing"]
+        }
+      ]
+    },
+    {
+      "id": "veterinary_services",
+      "title": "Section 5 - Veterinary Services",
+      "description": "Availability and history of veterinary care",
+      "fields": [
+        {
+          "key": "vet_service_available",
+          "label": "Veterinary Service Available?",
+          "type": "radio",
+          "required": true,
+          "options": ["Yes", "No"]
+        },
+        {
+          "key": "vet_service_type",
+          "label": "Type of Veterinary Service",
+          "type": "dropdown",
+          "required": true,
+          "options": ["Government", "Private", "Both"],
+          "showWhen": { "field": "vet_service_available", "value": "Yes" }
+        },
+        {
+          "key": "vet_distance_km",
+          "label": "Distance to Nearest Vet (km)",
+          "type": "number",
+          "required": true,
+          "validation": { "min": 0, "max": 200 }
+        },
+        {
+          "key": "vaccination_done",
+          "label": "Is Vaccination Done?",
+          "type": "radio",
+          "required": true,
+          "options": ["Yes", "No"]
+        },
+        {
+          "key": "vaccination_details",
+          "label": "Vaccination Details",
+          "type": "textarea",
+          "required": true,
+          "hint": "Type of vaccine, date, certificate number",
+          "showWhen": { "field": "vaccination_done", "value": "Yes" }
+        },
+        {
+          "key": "animal_loss_last_3years",
+          "label": "Any Animal Loss in Last 3 Years?",
+          "type": "radio",
+          "required": true,
+          "options": ["Yes", "No"]
+        },
+        {
+          "key": "loss_details",
+          "label": "Details of Animal Loss",
+          "type": "textarea",
+          "required": true,
+          "hint": "Cause, number of animals, year",
+          "showWhen": { "field": "animal_loss_last_3years", "value": "Yes" }
+        }
+      ]
+    },
+    {
+      "id": "bank_loan",
+      "title": "Section 6 - Bank / Loan Details",
+      "description": "Details of any bank financing for the animal",
+      "fields": [
+        {
+          "key": "bank_loan",
+          "label": "Is This Animal Financed by a Bank?",
+          "type": "radio",
+          "required": true,
+          "options": ["Yes", "No"]
+        },
+        {
+          "key": "bank_name",
+          "label": "Name of Bank",
+          "type": "text",
+          "required": true,
+          "showWhen": { "field": "bank_loan", "value": "Yes" }
+        },
+        {
+          "key": "branch",
+          "label": "Branch",
+          "type": "text",
+          "required": true,
+          "showWhen": { "field": "bank_loan", "value": "Yes" }
+        },
+        {
+          "key": "account_number",
+          "label": "Account Number",
+          "type": "text",
+          "required": true,
+          "showWhen": { "field": "bank_loan", "value": "Yes" }
+        },
+        {
+          "key": "loan_amount",
+          "label": "Loan Amount",
+          "type": "currency",
+          "required": true,
+          "showWhen": { "field": "bank_loan", "value": "Yes" }
+        },
+        {
+          "key": "loan_purpose",
+          "label": "Purpose of Loan",
+          "type": "text",
+          "required": true,
+          "hint": "e.g. Purchase of animal, Transport business",
+          "showWhen": { "field": "bank_loan", "value": "Yes" }
+        }
+      ]
+    }
+  ]
+}
