@@ -291,7 +291,7 @@ async def vet_claim_decision(
     claim.vet_id = str(vet.id)
     claim.vet_remarks = req.reason
 
-    if req.decision == "approved":
+    if req.decision in ("approve", "approved"):
         # Fix 6: Muzzle verification required before approval
         if not claim.ai_muzzle_match_score or claim.ai_muzzle_match_score < 60:
             raise HTTPException(
@@ -329,7 +329,7 @@ async def admin_claim_decision(
     if claim.status != "vet_approved":
         raise HTTPException(status_code=400, detail="Claim must be vet-approved first")
 
-    if req.decision == "approved":
+    if req.decision in ("approve", "approved"):
         # Fix 7: Settlement amount cap - cannot exceed sum_insured
         policy_result = await db.execute(
             select(Policy).where(Policy.id == claim.policy_id)
