@@ -65,9 +65,10 @@ class _ClaimFormScreenState extends ConsumerState<ClaimFormScreen> {
   // Death claim only — no type selection needed
   final ClaimType _selectedType = ClaimType.death;
   bool _isSubmitting = false;
-  int _currentStep = 0; // 0=form, 1=documents, 2=review (no type selection step)
+  int _currentStep = 0; // 0=form, 1=video, 2=documents, 3=review
   Map<String, dynamic> _savedFormData = {};
   final List<ClaimDocument> _uploadedDocs = [];
+  final List<String> _videoPaths = []; // Death scene + muzzle close-up videos
   final _picker = ImagePicker();
 
   String get _formType => 'claim_death';
@@ -91,12 +92,41 @@ class _ClaimFormScreenState extends ConsumerState<ClaimFormScreen> {
     return data;
   }
 
-  /// Called when dynamic form is filled — saves data and moves to document upload
+  /// Called when dynamic form is filled — moves to video capture
   Future<void> _handleFormComplete(Map<String, dynamic> formData) async {
     setState(() {
       _savedFormData = formData;
-      _currentStep = 1; // Move to document upload step
+      _currentStep = 1; // Move to video capture step
     });
+  }
+
+  /// Record a video (death scene or muzzle close-up)
+  Future<void> _recordVideo(String type) async {
+    try {
+      final video = await _picker.pickVideo(
+        source: ImageSource.camera,
+        maxDuration: type == 'death_scene'
+            ? const Duration(seconds: 60)
+            : const Duration(seconds: 15),
+      );
+      if (video != null && mounted) {
+        setState(() {
+          _videoPaths.add(video.path);
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${type == "death_scene" ? "Death scene" : "Muzzle close-up"} video recorded'),
+            backgroundColor: AppColors.success,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Video recording failed: $e'), backgroundColor: AppColors.error),
+        );
+      }
+    }
   }
 
   /// Upload a document photo
@@ -256,16 +286,18 @@ class _ClaimFormScreenState extends ConsumerState<ClaimFormScreen> {
               ),
               const SizedBox(height: 12),
 
-              // Step indicator (3 steps: Details → Documents → Submit)
+              // Step indicator (4 steps: Details → Video → Documents → Submit)
               Container(
                 margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                 child: Row(
                   children: [
                     _StepDot(label: 'Details', active: _currentStep == 0, done: _currentStep > 0),
                     _StepLine(done: _currentStep > 0),
-                    _StepDot(label: 'Documents', active: _currentStep == 1, done: _currentStep > 1),
+                    _StepDot(label: 'Video', active: _currentStep == 1, done: _currentStep > 1),
                     _StepLine(done: _currentStep > 1),
-                    _StepDot(label: 'Submit', active: _currentStep == 2, done: false),
+                    _StepDot(label: 'Documents', active: _currentStep == 2, done: _currentStep > 2),
+                    _StepLine(done: _currentStep > 2),
+                    _StepDot(label: 'Submit', active: _currentStep == 3, done: false),
                   ],
                 ),
               ),
@@ -277,8 +309,10 @@ class _ClaimFormScreenState extends ConsumerState<ClaimFormScreen> {
                   child: _currentStep == 0
                       ? _buildClaimForm()
                       : _currentStep == 1
-                          ? _buildDocumentUpload()
-                          : _buildReviewAndSubmit(),
+                          ? _buildVideoCapture()
+                          : _currentStep == 2
+                              ? _buildDocumentUpload()
+                              : _buildReviewAndSubmit(),
                 ),
               ),
             ],
@@ -407,6 +441,141 @@ class _ClaimFormScreenState extends ConsumerState<ClaimFormScreen> {
           ],
         );
       },
+    );
+  }
+
+  // ─── Step 2: Video Evidence Capture ────────────────────────────────
+  Widget _buildVideoCapture() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(height: 16),
+          Text(
+            'Video Evidence',
+            style: GoogleFonts.manrope(
+              fontSize: 20,
+              fontWeight: FontWeight.w800,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Record video evidence of the deceased animal. This is mandatory for claim processing.',
+            style: GoogleFonts.inter(fontSize: 14, color: Colors.grey.shade500),
+          ),
+          const SizedBox(height: 24),
+
+          // Video 1: Death scene (mandatory)
+          _VideoRecordCard(
+            title: 'Death Scene Video',
+            subtitle: 'Record full carcass, surroundings, ear tag (30-60 sec)',
+            icon: Icons.videocam,
+            color: const Color(0xFFC62828),
+            duration: '30-60 sec',
+            isRecorded: _videoPaths.isNotEmpty,
+            isMandatory: true,
+            onRecord: () => _recordVideo('death_scene'),
+            onRetake: _videoPaths.isNotEmpty ? () {
+              setState(() {
+                if (_videoPaths.isNotEmpty) _videoPaths.removeAt(0);
+              });
+            } : null,
+          ),
+          const SizedBox(height: 16),
+
+          // Video 2: Muzzle close-up (mandatory)
+          _VideoRecordCard(
+            title: 'Muzzle Close-up Video',
+            subtitle: 'Record close-up of muzzle/nose area for ID (10-15 sec)',
+            icon: Icons.zoom_in,
+            color: const Color(0xFFE65100),
+            duration: '10-15 sec',
+            isRecorded: _videoPaths.length >= 2,
+            isMandatory: true,
+            onRecord: () => _recordVideo('muzzle_closeup'),
+            onRetake: _videoPaths.length >= 2 ? () {
+              setState(() {
+                if (_videoPaths.length >= 2) _videoPaths.removeAt(1);
+              });
+            } : null,
+          ),
+          const SizedBox(height: 16),
+
+          // Video 3: Farmer declaration (optional)
+          _VideoRecordCard(
+            title: 'Farmer Declaration Video',
+            subtitle: 'State your name, animal ID, and cause of death (15-30 sec)',
+            icon: Icons.person_pin,
+            color: const Color(0xFF1565C0),
+            duration: '15-30 sec',
+            isRecorded: _videoPaths.length >= 3,
+            isMandatory: false,
+            onRecord: () => _recordVideo('farmer_declaration'),
+            onRetake: _videoPaths.length >= 3 ? () {
+              setState(() {
+                if (_videoPaths.length >= 3) _videoPaths.removeAt(2);
+              });
+            } : null,
+          ),
+
+          const SizedBox(height: 16),
+
+          // Info banner
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: Colors.amber.shade50,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.amber.shade200),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.info_outline, color: Colors.amber.shade700, size: 20),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'GPS location and IST timestamp are automatically embedded in all videos.',
+                    style: GoogleFonts.inter(fontSize: 12, color: Colors.amber.shade800),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 24),
+
+          // Next button
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: _videoPaths.length >= 2
+                  ? () => setState(() => _currentStep = 2)
+                  : null,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                disabledBackgroundColor: Colors.grey.shade300,
+              ),
+              child: Text(
+                _videoPaths.length >= 2
+                    ? 'Continue to Documents'
+                    : 'Record both mandatory videos to continue',
+                style: GoogleFonts.manrope(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+        ],
+      ),
     );
   }
 
@@ -760,7 +929,7 @@ class _ClaimFormScreenState extends ConsumerState<ClaimFormScreen> {
             children: [
               Expanded(
                 child: OutlinedButton.icon(
-                  onPressed: () => setState(() => _currentStep = 2),
+                  onPressed: () => setState(() => _currentStep = 2), // Back to documents
                   icon: const Icon(Icons.arrow_back, size: 18),
                   label: const Text('Back'),
                   style: OutlinedButton.styleFrom(
@@ -920,4 +1089,207 @@ class _ReviewCard extends StatelessWidget {
   }
 }
 
-// _ClaimTypeCard removed — death claims only, no type selection needed
+/// Card widget for video recording with status indicator.
+class _VideoRecordCard extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final Color color;
+  final String duration;
+  final bool isRecorded;
+  final bool isMandatory;
+  final VoidCallback onRecord;
+  final VoidCallback? onRetake;
+
+  const _VideoRecordCard({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.color,
+    required this.duration,
+    required this.isRecorded,
+    required this.isMandatory,
+    required this.onRecord,
+    this.onRetake,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isRecorded
+              ? AppColors.success.withValues(alpha: 0.4)
+              : color.withValues(alpha: 0.2),
+          width: isRecorded ? 2 : 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: (isRecorded ? AppColors.success : color).withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  isRecorded ? Icons.check_circle : icon,
+                  color: isRecorded ? AppColors.success : color,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            title,
+                            style: GoogleFonts.manrope(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                        ),
+                        if (isMandatory)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.red.shade50,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              'Required',
+                              style: GoogleFonts.inter(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.red.shade700,
+                              ),
+                            ),
+                          )
+                        else
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade100,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              'Optional',
+                              style: GoogleFonts.inter(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.grey.shade600,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      subtitle,
+                      style: GoogleFonts.inter(fontSize: 12, color: Colors.grey.shade500),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              // Duration badge
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.timer, size: 14, color: Colors.grey.shade600),
+                    const SizedBox(width: 4),
+                    Text(
+                      duration,
+                      style: GoogleFonts.inter(fontSize: 11, color: Colors.grey.shade600),
+                    ),
+                  ],
+                ),
+              ),
+              const Spacer(),
+              // Record / Retake buttons
+              if (isRecorded && onRetake != null)
+                TextButton.icon(
+                  onPressed: onRetake,
+                  icon: const Icon(Icons.refresh, size: 16),
+                  label: Text(
+                    'Retake',
+                    style: GoogleFonts.inter(fontSize: 13),
+                  ),
+                  style: TextButton.styleFrom(foregroundColor: Colors.grey.shade600),
+                ),
+              if (!isRecorded)
+                ElevatedButton.icon(
+                  onPressed: onRecord,
+                  icon: const Icon(Icons.videocam, size: 18),
+                  label: Text(
+                    'Record',
+                    style: GoogleFonts.manrope(fontWeight: FontWeight.w600, fontSize: 13),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: color,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+              if (isRecorded)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: AppColors.success.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.check, size: 16, color: AppColors.success),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Recorded',
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.success,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
