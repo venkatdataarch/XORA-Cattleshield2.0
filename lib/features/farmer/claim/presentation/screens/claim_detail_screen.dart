@@ -639,7 +639,7 @@ class _ClaimDetailContent extends StatelessWidget {
   Widget _buildFormDataSection(BuildContext context) {
     if (claim.formData.isEmpty) return const SizedBox.shrink();
 
-    final formType = claim.type == ClaimType.death ? 'claim_death' : 'claim_injury';
+    final formType = 'claim_death'; // Death claims only
 
     return Consumer(
       builder: (context, ref, _) {

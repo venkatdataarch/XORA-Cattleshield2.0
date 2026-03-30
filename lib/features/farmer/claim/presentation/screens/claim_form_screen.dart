@@ -62,24 +62,15 @@ class ClaimDocument {
 }
 
 class _ClaimFormScreenState extends ConsumerState<ClaimFormScreen> {
-  ClaimType? _selectedType;
+  // Death claim only — no type selection needed
+  final ClaimType _selectedType = ClaimType.death;
   bool _isSubmitting = false;
-  int _currentStep = 0; // 0=type, 1=form, 2=documents, 3=review
+  int _currentStep = 0; // 0=form, 1=documents, 2=review (no type selection step)
   Map<String, dynamic> _savedFormData = {};
   final List<ClaimDocument> _uploadedDocs = [];
   final _picker = ImagePicker();
 
-  String get _formType {
-    switch (_selectedType) {
-      case ClaimType.death:
-        return 'claim_death';
-      case ClaimType.injury:
-      case ClaimType.disease:
-        return 'claim_injury';
-      case null:
-        return '';
-    }
-  }
+  String get _formType => 'claim_death';
 
   Map<String, dynamic> _buildInitialData() {
     final data = <String, dynamic>{};
@@ -104,7 +95,7 @@ class _ClaimFormScreenState extends ConsumerState<ClaimFormScreen> {
   Future<void> _handleFormComplete(Map<String, dynamic> formData) async {
     setState(() {
       _savedFormData = formData;
-      _currentStep = 2; // Move to document upload step
+      _currentStep = 1; // Move to document upload step
     });
   }
 
@@ -252,9 +243,7 @@ class _ClaimFormScreenState extends ConsumerState<ClaimFormScreen> {
                     const SizedBox(width: 14),
                     Expanded(
                       child: Text(
-                        _selectedType != null
-                            ? 'File ${_selectedType!.label} Claim'
-                            : 'File a Claim',
+                        'File Death Claim',
                         style: GoogleFonts.manrope(
                           fontSize: 20,
                           fontWeight: FontWeight.w800,
@@ -267,34 +256,29 @@ class _ClaimFormScreenState extends ConsumerState<ClaimFormScreen> {
               ),
               const SizedBox(height: 12),
 
-              // Step indicator
-              if (_selectedType != null)
-                Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                  child: Row(
-                    children: [
-                      _StepDot(label: 'Type', active: _currentStep == 0, done: _currentStep > 0),
-                      _StepLine(done: _currentStep > 0),
-                      _StepDot(label: 'Details', active: _currentStep == 1, done: _currentStep > 1),
-                      _StepLine(done: _currentStep > 1),
-                      _StepDot(label: 'Documents', active: _currentStep == 2, done: _currentStep > 2),
-                      _StepLine(done: _currentStep > 2),
-                      _StepDot(label: 'Submit', active: _currentStep == 3, done: false),
-                    ],
-                  ),
+              // Step indicator (3 steps: Details → Documents → Submit)
+              Container(
+                margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                child: Row(
+                  children: [
+                    _StepDot(label: 'Details', active: _currentStep == 0, done: _currentStep > 0),
+                    _StepLine(done: _currentStep > 0),
+                    _StepDot(label: 'Documents', active: _currentStep == 1, done: _currentStep > 1),
+                    _StepLine(done: _currentStep > 1),
+                    _StepDot(label: 'Submit', active: _currentStep == 2, done: false),
+                  ],
                 ),
+              ),
 
               Expanded(
                 child: LoadingOverlay(
                   isLoading: _isSubmitting,
                   message: 'Submitting claim...',
                   child: _currentStep == 0
-                      ? _buildTypeSelection()
+                      ? _buildClaimForm()
                       : _currentStep == 1
-                          ? _buildClaimForm()
-                          : _currentStep == 2
-                              ? _buildDocumentUpload()
-                              : _buildReviewAndSubmit(),
+                          ? _buildDocumentUpload()
+                          : _buildReviewAndSubmit(),
                 ),
               ),
             ],
@@ -304,46 +288,7 @@ class _ClaimFormScreenState extends ConsumerState<ClaimFormScreen> {
     );
   }
 
-  Widget _buildTypeSelection() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const SizedBox(height: 8),
-          Text(
-            'What type of claim?',
-            style: GoogleFonts.manrope(
-              fontSize: 20,
-              fontWeight: FontWeight.w800,
-              color: AppColors.textPrimary,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Select the type of claim you want to file for this policy.',
-            style: GoogleFonts.manrope(
-              fontSize: 14,
-              color: Colors.grey.shade500,
-            ),
-          ),
-          const SizedBox(height: 24),
-          ...ClaimType.values.map((type) {
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: _ClaimTypeCard(
-                type: type,
-                onTap: () => setState(() {
-                  _selectedType = type;
-                  _currentStep = 1;
-                }),
-              ),
-            );
-          }),
-        ],
-      ),
-    );
-  }
+  // Type selection removed — death claims only
 
   Widget _policyInfoRow(String label, String value) {
     return Padding(
@@ -447,13 +392,6 @@ class _ClaimFormScreenState extends ConsumerState<ClaimFormScreen> {
                     ),
                   ),
                   const Spacer(),
-                  TextButton(
-                    onPressed: () => setState(() {
-                      _selectedType = null;
-                      _currentStep = 0;
-                    }),
-                    child: Text('Change', style: GoogleFonts.manrope(fontWeight: FontWeight.w600)),
-                  ),
                 ],
               ),
             ),
@@ -982,82 +920,4 @@ class _ReviewCard extends StatelessWidget {
   }
 }
 
-class _ClaimTypeCard extends StatelessWidget {
-  final ClaimType type;
-  final VoidCallback onTap;
-
-  const _ClaimTypeCard({
-    required this.type,
-    required this.onTap,
-  });
-
-  String get _description {
-    switch (type) {
-      case ClaimType.death:
-        return 'File a claim for the death of the insured animal.';
-      case ClaimType.injury:
-        return 'File a claim for injury to the insured animal.';
-      case ClaimType.disease:
-        return 'File a claim for disease affecting the insured animal.';
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: type.color.withValues(alpha: 0.2)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.06),
-              blurRadius: 20,
-              offset: const Offset(0, 8),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: type.color.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: Icon(type.icon, color: type.color, size: 28),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    type.label,
-                    style: GoogleFonts.manrope(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: type.color,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    _description,
-                    style: GoogleFonts.manrope(
-                      fontSize: 13,
-                      color: Colors.grey.shade500,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Icon(Icons.chevron_right, color: type.color),
-          ],
-        ),
-      ),
-    );
-  }
-}
+// _ClaimTypeCard removed — death claims only, no type selection needed

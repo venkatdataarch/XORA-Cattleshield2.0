@@ -485,9 +485,7 @@ class _VetClaimReviewScreenState extends ConsumerState<VetClaimReviewScreen> {
         // Determine certificate type based on claim type
         final claim =
             ref.read(_claimDetailProvider(widget.claimId)).valueOrNull;
-        final certType = claim?.type == ClaimType.injury
-            ? 'claimInjury'
-            : 'claimDeath';
+        const certType = 'claimDeath'; // Death claims only
         context.pushReplacement(
           '/vet/certificate/form?type=$certType&entityId=${widget.claimId}',
         );

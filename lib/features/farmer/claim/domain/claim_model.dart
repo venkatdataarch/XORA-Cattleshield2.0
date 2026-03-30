@@ -82,55 +82,23 @@ enum ClaimStatus {
   }
 }
 
-/// Type of insurance claim.
+/// Type of insurance claim — death claims only.
 enum ClaimType {
-  death,
-  injury,
-  disease;
+  death;
 
   /// Creates a [ClaimType] from its JSON string representation.
   static ClaimType fromString(String value) {
-    return ClaimType.values.firstWhere(
-      (t) => t.name == value.toLowerCase(),
-      orElse: () => ClaimType.death,
-    );
+    return ClaimType.death; // Only death claims supported
   }
 
   /// Human-readable label for display.
-  String get label {
-    switch (this) {
-      case ClaimType.death:
-        return 'Death';
-      case ClaimType.injury:
-        return 'Injury';
-      case ClaimType.disease:
-        return 'Disease';
-    }
-  }
+  String get label => 'Death';
 
   /// Icon for the claim type.
-  IconData get icon {
-    switch (this) {
-      case ClaimType.death:
-        return Icons.dangerous;
-      case ClaimType.injury:
-        return Icons.healing;
-      case ClaimType.disease:
-        return Icons.local_hospital;
-    }
-  }
+  IconData get icon => Icons.dangerous;
 
   /// Color for the claim type badge.
-  Color get color {
-    switch (this) {
-      case ClaimType.death:
-        return AppColors.error;
-      case ClaimType.injury:
-        return AppColors.warning;
-      case ClaimType.disease:
-        return AppColors.info;
-    }
-  }
+  Color get color => AppColors.error;
 }
 
 /// Represents a piece of evidence media attached to a claim.
