@@ -1,0 +1,272 @@
+{
+  "id": "vet_cert_proposal_v1",
+  "formType": "vet_cert_proposal",
+  "version": "1.0",
+  "title": "UIIC Veterinary Certificate for Insurance Proposal",
+  "animalTypes": ["cow", "buffalo", "mule", "horse", "donkey"],
+  "sections": [
+    {
+      "id": "animal_identity",
+      "title": "Section 1 - Animal Identity",
+      "description": "Identity details of the animal (pre-filled from proposal)",
+      "fields": [
+        {
+          "key": "animal_description",
+          "label": "Description of Animal",
+          "type": "text",
+          "required": true,
+          "readOnly": true
+        },
+        {
+          "key": "identification_tag",
+          "label": "Ear Tag / Identification Number",
+          "type": "text",
+          "required": true,
+          "readOnly": true
+        },
+        {
+          "key": "species_breed",
+          "label": "Species / Breed",
+          "type": "text",
+          "required": true,
+          "readOnly": true
+        },
+        {
+          "key": "sex",
+          "label": "Sex",
+          "type": "text",
+          "required": true,
+          "readOnly": true
+        },
+        {
+          "key": "color",
+          "label": "Colour",
+          "type": "text",
+          "required": true,
+          "readOnly": true
+        },
+        {
+          "key": "age",
+          "label": "Age",
+          "type": "text",
+          "required": true,
+          "readOnly": true
+        },
+        {
+          "key": "height",
+          "label": "Height (cm)",
+          "type": "text",
+          "required": false,
+          "readOnly": true
+        },
+        {
+          "key": "owner_name",
+          "label": "Owner Name",
+          "type": "text",
+          "required": true,
+          "readOnly": true
+        },
+        {
+          "key": "policy_number",
+          "label": "Proposal / Policy Reference",
+          "type": "text",
+          "required": false,
+          "readOnly": true
+        }
+      ]
+    },
+    {
+      "id": "clinical_examination",
+      "title": "Section 2 - Clinical Examination",
+      "description": "Results of the veterinary clinical examination",
+      "fields": [
+        {
+          "key": "body_condition_score",
+          "label": "Body Condition Score",
+          "type": "dropdown",
+          "required": true,
+          "options": ["1 - Very Thin", "2 - Thin", "3 - Average", "4 - Fat", "5 - Very Fat"]
+        },
+        {
+          "key": "general_health",
+          "label": "General Health",
+          "type": "dropdown",
+          "required": true,
+          "options": ["Good", "Fair", "Poor"]
+        },
+        {
+          "key": "temperature",
+          "label": "Temperature (°F)",
+          "type": "number",
+          "required": true,
+          "hint": "Normal range: 100.5 - 102.5°F",
+          "validation": { "min": 95, "max": 110, "errorMessage": "Temperature must be between 95 and 110°F" }
+        },
+        {
+          "key": "pulse_rate",
+          "label": "Pulse Rate (per minute)",
+          "type": "number",
+          "required": true,
+          "hint": "Normal range: 40 - 80 bpm",
+          "validation": { "min": 20, "max": 200 }
+        },
+        {
+          "key": "respiration_rate",
+          "label": "Respiration Rate (per minute)",
+          "type": "number",
+          "required": true,
+          "hint": "Normal range: 15 - 30 breaths/min",
+          "validation": { "min": 5, "max": 100 }
+        },
+        {
+          "key": "mucous_membrane",
+          "label": "Mucous Membrane",
+          "type": "dropdown",
+          "required": true,
+          "options": ["Pink (Normal)", "Pale", "Congested", "Icteric (Yellow)", "Cyanotic (Blue)"]
+        },
+        {
+          "key": "lymph_nodes",
+          "label": "Lymph Nodes",
+          "type": "dropdown",
+          "required": true,
+          "options": ["Normal", "Enlarged", "Swollen and Painful"]
+        },
+        {
+          "key": "skin_condition",
+          "label": "Skin / Coat Condition",
+          "type": "textarea",
+          "required": true,
+          "hint": "Describe skin texture, coat quality, any lesions or parasites"
+        },
+        {
+          "key": "limbs_hooves",
+          "label": "Limbs and Hooves",
+          "type": "textarea",
+          "required": true,
+          "hint": "Describe condition of limbs, joints, hooves"
+        },
+        {
+          "key": "eyes",
+          "label": "Eyes",
+          "type": "textarea",
+          "required": true,
+          "hint": "Describe condition of eyes - clarity, discharge, etc."
+        },
+        {
+          "key": "teeth_estimated_age",
+          "label": "Teeth / Estimated Age from Dentition",
+          "type": "text",
+          "required": true,
+          "hint": "Estimated age based on dental examination"
+        },
+        {
+          "key": "udder_teats",
+          "label": "Udder and Teats (if applicable)",
+          "type": "textarea",
+          "required": false,
+          "hint": "Condition of udder, teats, any abnormalities"
+        },
+        {
+          "key": "reproductive_system",
+          "label": "Reproductive System",
+          "type": "textarea",
+          "required": false,
+          "hint": "Any abnormalities in reproductive system"
+        }
+      ]
+    },
+    {
+      "id": "certification",
+      "title": "Section 3 - Certification",
+      "description": "Veterinary certification for insurance",
+      "fields": [
+        {
+          "key": "examined_for_insurance",
+          "label": "Animal Examined for Insurance Purpose?",
+          "type": "radio",
+          "required": true,
+          "options": ["Yes", "No"]
+        },
+        {
+          "key": "identity_confirmed",
+          "label": "Identity of Animal Confirmed?",
+          "type": "radio",
+          "required": true,
+          "options": ["Yes", "No"]
+        },
+        {
+          "key": "fit_for_insurance",
+          "label": "Animal Fit for Insurance?",
+          "type": "radio",
+          "required": true,
+          "options": ["Yes", "No"]
+        },
+        {
+          "key": "unfit_reason",
+          "label": "Reason if Unfit",
+          "type": "textarea",
+          "required": true,
+          "hint": "State reasons why the animal is unfit for insurance",
+          "showWhen": { "field": "fit_for_insurance", "value": "No" }
+        },
+        {
+          "key": "remarks",
+          "label": "Additional Remarks",
+          "type": "textarea",
+          "required": false,
+          "hint": "Any additional observations or notes"
+        }
+      ]
+    },
+    {
+      "id": "vet_details",
+      "title": "Section 4 - Veterinary Doctor Details",
+      "description": "Details of the examining veterinary doctor",
+      "fields": [
+        {
+          "key": "vet_name",
+          "label": "Name of Veterinary Doctor",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "vet_qualification",
+          "label": "Qualification",
+          "type": "text",
+          "required": true,
+          "hint": "e.g. BVSc & AH, MVSc"
+        },
+        {
+          "key": "vet_reg_number",
+          "label": "Registration Number",
+          "type": "text",
+          "required": true,
+          "hint": "State Veterinary Council registration number"
+        },
+        {
+          "key": "vet_address",
+          "label": "Address",
+          "type": "textarea",
+          "required": true
+        },
+        {
+          "key": "vet_phone",
+          "label": "Phone Number",
+          "type": "text",
+          "required": true,
+          "validation": {
+            "pattern": "^[6-9]\\d{9}$",
+            "errorMessage": "Enter a valid 10-digit mobile number"
+          }
+        },
+        {
+          "key": "examination_date",
+          "label": "Date of Examination",
+          "type": "date",
+          "required": true
+        }
+      ]
+    }
+  ]
+}

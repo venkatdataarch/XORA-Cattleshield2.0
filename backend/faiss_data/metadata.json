@@ -1,0 +1,53 @@
+{
+  "cow": [
+    {
+      "animal_id": "6f120225-0cdf-41e3-8bd4-1f49073a4ffd",
+      "species": "cow",
+      "angle": "front",
+      "image_path": "uploads/muzzle_scans/cow\\6f120225-0cdf-41e3-8bd4-1f49073a4ffd\\front_20260326_150253_223111.jpg",
+      "registered_at": "2026-03-27T18:52:20.032971+05:30",
+      "faiss_idx": 0
+    },
+    {
+      "animal_id": "846444cc-e59e-4452-9800-718eaf943f25",
+      "species": "cow",
+      "angle": "front",
+      "image_path": "uploads/muzzle_scans/cow\\846444cc-e59e-4452-9800-718eaf943f25\\front_20260326_183951_245343.jpg",
+      "registered_at": "2026-03-27T18:52:20.140130+05:30",
+      "faiss_idx": 1
+    },
+    {
+      "animal_id": "b9243b68-04c9-4ae5-b54b-62878967dbb8",
+      "species": "cow",
+      "angle": "front",
+      "image_path": "uploads/muzzle_scans/cow\\b9243b68-04c9-4ae5-b54b-62878967dbb8\\front_20260327_062928_691846.jpg",
+      "registered_at": "2026-03-27T18:52:20.207259+05:30",
+      "faiss_idx": 2
+    },
+    {
+      "animal_id": "badd6e8f-8acf-4945-af43-a2d18e49dc63",
+      "species": "cow",
+      "angle": "front",
+      "image_path": "uploads/muzzle_scans/cow\\badd6e8f-8acf-4945-af43-a2d18e49dc63\\front_20260326_183714_378596.jpg",
+      "registered_at": "2026-03-27T18:52:20.287935+05:30",
+      "faiss_idx": 3
+    },
+    {
+      "animal_id": "db0e26de-3ea5-472e-b8e7-729d956e34de",
+      "species": "cow",
+      "angle": "front",
+      "image_path": "uploads/muzzle_scans/cow\\db0e26de-3ea5-472e-b8e7-729d956e34de\\front_20260327_054816_524000.jpg",
+      "registered_at": "2026-03-27T18:52:20.357876+05:30",
+      "faiss_idx": 4
+    },
+    {
+      "animal_id": "dd988339-00c5-4a0e-8d04-c34d80001434",
+      "species": "cow",
+      "angle": "front",
+      "image_path": "uploads/muzzle_scans/cow\\dd988339-00c5-4a0e-8d04-c34d80001434\\front_20260327_095955_720088.jpg",
+      "registered_at": "2026-03-27T18:52:20.436972+05:30",
+      "faiss_idx": 5
+    }
+  ],
+  "mule": []
+}
