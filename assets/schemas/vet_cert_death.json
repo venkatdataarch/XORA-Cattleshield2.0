@@ -1,0 +1,324 @@
+{
+  "id": "vet_cert_death_v1",
+  "formType": "vet_cert_death",
+  "version": "1.0",
+  "title": "UIIC Veterinary Certificate for Death Claim",
+  "animalTypes": ["cow", "buffalo", "mule", "horse", "donkey"],
+  "sections": [
+    {
+      "id": "animal_identity",
+      "title": "Section 1 - Animal Identity",
+      "description": "Identity details of the deceased animal (pre-filled from policy)",
+      "fields": [
+        {
+          "key": "animal_description",
+          "label": "Description of Animal",
+          "type": "text",
+          "required": true,
+          "readOnly": true
+        },
+        {
+          "key": "identification_tag",
+          "label": "Ear Tag / Identification Number",
+          "type": "text",
+          "required": true,
+          "readOnly": true
+        },
+        {
+          "key": "species_breed",
+          "label": "Species / Breed",
+          "type": "text",
+          "required": true,
+          "readOnly": true
+        },
+        {
+          "key": "sex",
+          "label": "Sex",
+          "type": "text",
+          "required": true,
+          "readOnly": true
+        },
+        {
+          "key": "color",
+          "label": "Colour",
+          "type": "text",
+          "required": true,
+          "readOnly": true
+        },
+        {
+          "key": "age",
+          "label": "Age",
+          "type": "text",
+          "required": true,
+          "readOnly": true
+        },
+        {
+          "key": "height",
+          "label": "Height (cm)",
+          "type": "text",
+          "required": false,
+          "readOnly": true
+        },
+        {
+          "key": "owner_name",
+          "label": "Owner Name",
+          "type": "text",
+          "required": true,
+          "readOnly": true
+        },
+        {
+          "key": "policy_number",
+          "label": "Policy Number",
+          "type": "text",
+          "required": true,
+          "readOnly": true
+        }
+      ]
+    },
+    {
+      "id": "post_mortem",
+      "title": "Section 2 - Post-Mortem Examination",
+      "description": "Post-mortem findings and cause of death",
+      "fields": [
+        {
+          "key": "post_mortem_conducted",
+          "label": "Was a Post-Mortem Conducted?",
+          "type": "radio",
+          "required": true,
+          "options": ["Yes", "No"]
+        },
+        {
+          "key": "post_mortem_date",
+          "label": "Date of Post-Mortem",
+          "type": "date",
+          "required": true,
+          "showWhen": { "field": "post_mortem_conducted", "value": "Yes" }
+        },
+        {
+          "key": "post_mortem_report",
+          "label": "Post-Mortem Report / Findings",
+          "type": "textarea",
+          "required": true,
+          "hint": "Detailed findings from the post-mortem examination",
+          "showWhen": { "field": "post_mortem_conducted", "value": "Yes" }
+        },
+        {
+          "key": "no_post_mortem_reason",
+          "label": "Reason Post-Mortem Was Not Conducted",
+          "type": "textarea",
+          "required": true,
+          "hint": "State why post-mortem could not be conducted",
+          "showWhen": { "field": "post_mortem_conducted", "value": "No" }
+        },
+        {
+          "key": "cause_of_death",
+          "label": "Cause of Death",
+          "type": "dropdown",
+          "required": true,
+          "options": ["Disease", "Accident", "Operation", "Natural Causes", "Unknown"]
+        },
+        {
+          "key": "disease_account",
+          "label": "Account of Disease",
+          "type": "textarea",
+          "required": true,
+          "hint": "Describe the disease, symptoms, duration, and progression",
+          "showWhen": { "field": "cause_of_death", "value": "Disease" }
+        },
+        {
+          "key": "accident_details",
+          "label": "Accident Details",
+          "type": "textarea",
+          "required": true,
+          "hint": "Full circumstances of the accident",
+          "showWhen": { "field": "cause_of_death", "value": "Accident" }
+        },
+        {
+          "key": "operation_details",
+          "label": "Operation Details",
+          "type": "textarea",
+          "required": true,
+          "hint": "Nature of the operation, surgeon name, complications",
+          "showWhen": { "field": "cause_of_death", "value": "Operation" }
+        },
+        {
+          "key": "operation_date",
+          "label": "Date of Operation",
+          "type": "date",
+          "required": true,
+          "showWhen": { "field": "cause_of_death", "value": "Operation" }
+        },
+        {
+          "key": "death_date",
+          "label": "Date of Death",
+          "type": "date",
+          "required": true
+        },
+        {
+          "key": "death_time",
+          "label": "Time of Death",
+          "type": "text",
+          "required": false,
+          "hint": "Approximate time (e.g. 10:30 AM)"
+        }
+      ]
+    },
+    {
+      "id": "care_identity",
+      "title": "Section 3 - Care & Identity Verification",
+      "description": "Verification of care provided and identity of the animal",
+      "fields": [
+        {
+          "key": "animal_had_care",
+          "label": "Did the Animal Receive Proper Care?",
+          "type": "radio",
+          "required": true,
+          "options": ["Yes", "No"]
+        },
+        {
+          "key": "care_details",
+          "label": "Details of Care Provided",
+          "type": "textarea",
+          "required": true,
+          "hint": "Describe the care, feeding, and treatment provided"
+        },
+        {
+          "key": "neglect_details",
+          "label": "Details of Neglect (if any)",
+          "type": "textarea",
+          "required": true,
+          "hint": "Describe any evidence of neglect or poor care",
+          "showWhen": { "field": "animal_had_care", "value": "No" }
+        },
+        {
+          "key": "examined_for_insurance",
+          "label": "Was the Animal Examined Under This Insurance Policy?",
+          "type": "radio",
+          "required": true,
+          "options": ["Yes", "No"]
+        },
+        {
+          "key": "identity_confirmed",
+          "label": "Identity of Dead Animal Confirmed as Insured Animal?",
+          "type": "radio",
+          "required": true,
+          "options": ["Yes", "No"]
+        },
+        {
+          "key": "how_identity_confirmed",
+          "label": "How Was Identity Confirmed?",
+          "type": "textarea",
+          "required": true,
+          "hint": "Describe the method used to confirm identity (ear tag, markings, etc.)"
+        },
+        {
+          "key": "identity_not_confirmed_reason",
+          "label": "Reason Identity Could Not Be Confirmed",
+          "type": "textarea",
+          "required": true,
+          "showWhen": { "field": "identity_confirmed", "value": "No" }
+        }
+      ]
+    },
+    {
+      "id": "injury_disease",
+      "title": "Section 4 - Injury / Disease Details",
+      "description": "Additional details if death resulted from injury or permanent incapacity",
+      "showWhen": { "field": "is_injury_claim", "value": "Yes" },
+      "fields": [
+        {
+          "key": "nature_of_injury",
+          "label": "Nature of Injury / Disease",
+          "type": "textarea",
+          "required": true,
+          "hint": "Describe the type and nature of injury or disease"
+        },
+        {
+          "key": "injury_duration",
+          "label": "Duration of Injury / Disease",
+          "type": "text",
+          "required": true,
+          "hint": "e.g. 10 days, 2 weeks"
+        },
+        {
+          "key": "permanent_incapacity",
+          "label": "Was There Permanent Incapacity?",
+          "type": "radio",
+          "required": true,
+          "options": ["Yes", "No"]
+        },
+        {
+          "key": "incapacity_details",
+          "label": "Details of Permanent Incapacity",
+          "type": "textarea",
+          "required": true,
+          "hint": "Describe the nature and extent of incapacity",
+          "showWhen": { "field": "permanent_incapacity", "value": "Yes" }
+        },
+        {
+          "key": "treatment_given",
+          "label": "Treatment Given",
+          "type": "textarea",
+          "required": true,
+          "hint": "Describe the veterinary treatment provided"
+        }
+      ]
+    },
+    {
+      "id": "vet_declaration",
+      "title": "Section 5 - Veterinary Doctor Declaration",
+      "description": "Details and declaration of the certifying veterinary doctor",
+      "fields": [
+        {
+          "key": "vet_name",
+          "label": "Name of Veterinary Doctor",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "vet_qualification",
+          "label": "Qualification",
+          "type": "text",
+          "required": true,
+          "hint": "e.g. BVSc & AH, MVSc"
+        },
+        {
+          "key": "vet_reg_number",
+          "label": "Registration Number",
+          "type": "text",
+          "required": true,
+          "hint": "State Veterinary Council registration number"
+        },
+        {
+          "key": "vet_address",
+          "label": "Address",
+          "type": "textarea",
+          "required": true
+        },
+        {
+          "key": "vet_phone",
+          "label": "Phone Number",
+          "type": "text",
+          "required": true,
+          "validation": {
+            "pattern": "^[6-9]\\d{9}$",
+            "errorMessage": "Enter a valid 10-digit mobile number"
+          }
+        },
+        {
+          "key": "certificate_date",
+          "label": "Date of Certificate",
+          "type": "date",
+          "required": true
+        },
+        {
+          "key": "declaration_remarks",
+          "label": "Additional Remarks",
+          "type": "textarea",
+          "required": false,
+          "hint": "Any additional observations or notes"
+        }
+      ]
+    }
+  ]
+}
